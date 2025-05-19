@@ -1,0 +1,273 @@
+
+
+---
+
+**量化交易策略开发需求文档 - A股ETF多数据轮动策略**
+
+**文档版本:** 3.1 (最终修订版)
+**日期:** 2023-10-27
+**取代版本:** v2.1 及之前所有版本
+
+**变更记录:**
+*   v3.1: 根据反馈全面重写，整合所有章节，大幅提升细节深度、精确性和可落地性，增加明确的验收标准和错误处理需求。
+
+**1. 引言**
+
+*   **1.1 目的:** 本文档为“A股ETF多数据轮动策略（v1.3 - 增强日志与并行优化版）”提供最终的技术与业务需求规格说明。本文档是系统设计、开发、测试、部署及未来维护的权威依据，旨在确保所有相关方对系统的功能、性能、接口和约束有清晰、一致且可执行的理解。
+*   **1.2 系统范围:** 本系统是一个基于Python Backtrader框架的量化交易策略系统。其核心功能是并行处理用户提供的多个A股ETF数据源（日线或更高频率），根据内部逻辑动态识别市场状态，并结合为每个ETF预设的交易类型（趋势型/震荡型）执行相应的交易规则。系统需具备完善的订单管理、仓位控制、多维度风险管理（单笔、单标的、总账户、回撤控制）以及结构化的事件日志记录能力。系统必须支持单次回测和多核并行的参数优化。
+*   **1.3 目标用户:** 量化策略开发者、量化分析师、投资组合经理、需要进行策略验证与优化的交易者。
+*   **1.4 定义与缩写:**
+    *   EMA: 指数移动平均线 (Exponential Moving Average)
+    *   ADX: 平均趋向指数 (Average Directional Movement Index)
+    *   ATR: 平均真实波幅 (Average True Range)
+    *   BBands: 布林带 (Bollinger Bands)
+    *   RSI: 相对强弱指数 (Relative Strength Index)
+    *   SMA: 简单移动平均线 (Simple Moving Average)
+    *   OHLCV: 开盘价(Open), 最高价(High), 最低价(Low), 收盘价(Close), 成交量(Volume)
+    *   OI: 持仓量 (Open Interest) - 可选
+    *   HWM: 历史最高净值 (High Water Mark)
+    *   SL: 止损 (Stop Loss)
+    *   TP: 止盈 (Take Profit)
+    *   JSONL: JSON Lines
+    *   UUID: 通用唯一标识符
+    *   PID: 进程ID
+    *   FR: 功能需求
+    *   NFR: 非功能需求
+    *   DR: 数据需求
+    *   CR: 配置需求
+    *   RR: 风险需求
+    *   LR: 日志需求
+    *   OR: 输出需求
+    *   OPT: 优化需求
+    *   EH: 错误处理需求
+    *   AC: 验收标准 (Acceptance Criteria)
+
+**2. 系统概述**
+
+本系统旨在构建一个模块化、可扩展的A股ETF量化交易解决方案。通过配置文件驱动，用户可灵活指定交易标的、回测周期、初始资本、交易成本等基础环境。策略核心 (`AShareETFStrategy`) 负责实时（回测中模拟）分析各ETF的价格和成交量数据，利用一系列可配置的技术指标（EMA、ADX、BBands、RSI等）判断市场模式（趋势向上或区间震荡）。根据每个ETF被赋予的交易偏好（趋势跟踪或均值回归），策略将触发不同的入场信号（如突破、回调、超卖反弹）并生成相应的括号订单（包含入场、止损、止盈）。系统内置了多层次的风险控制机制，从单笔交易的风险敞口到整体账户的最大回撤，都有明确的量化约束和动态调整逻辑。为了便于调试、分析和审计，系统实现了基于JSONL的结构化日志系统，支持异步写入，确保日志记录的效率和完整性。最终，系统能输出详细的回测绩效报告或参数优化结果，并在单次回测模式下提供可视化图表。
+
+**3. 功能需求 (FR)**
+
+*   **FR-STRAT-001: 策略主体与初始化 (`AShareETFStrategy`)**
+    *   **FR-STRAT-001.1:** 策略类必须继承 `bt.Strategy`。
+    *   **FR-STRAT-001.2:** `params` 定义: 必须包含 CR-004 中列出的所有参数及其默认值。
+    *   **FR-STRAT-001.3:** `__init__` 方法实现:
+        *   调用 `setup_logging` (LR-003)，获取 `self.logger`, `self.log_filename`。
+        *   记录 `STRATEGY_INIT` 事件，包含策略名称、实例ID和所有生效参数 (LR-005, LR-006)。
+        *   创建 `self.datas_dict` (名称 -> 数据对象映射)。
+        *   初始化状态字典 (`orders`, `buy_prices`, `buy_comms`, `stop_loss_prices`, `take_profit_prices`, `position_types`)，键为数据对象，值为None/初始状态。
+        *   初始化风险变量 (`high_water_mark=0`, `drawdown_level1_triggered=False`, `halt_trading=False`, `current_risk_multiplier=1.0`)。
+        *   循环 `self.datas`，为每个数据源 `d` 实例化 FR-IND-001 中定义的全部指标，并存储（如 `self.emas_medium.append(bt.indicators.EMA(...))`）。
+        *   初始化 `self.order_ref_to_trade_id_map = {}`, `self.current_trade_id = None`。
+    *   **AC:** 策略对象成功实例化，日志文件创建并写入初始化信息，所有内部状态和指标容器被正确初始化。
+
+*   **FR-DATA-001: 多数据源处理**
+    *   **描述:** 确保策略逻辑能正确、独立地应用于所有加载的数据源。
+    *   **实现细节:** `next()` 方法必须使用 `for i, d in enumerate(self.datas):` 循环。循环体内所有对价格、指标、状态的访问和修改，以及交易决策，都必须使用当前的 `d` 或索引 `i`。状态字典必须使用 `d` 作为键。
+    *   **AC:** 在包含至少2个数据源的回测中，每个数据源的交易信号、订单、持仓变化独立发生，互不串扰（除非是全局风险控制逻辑）。
+
+*   **FR-IND-001: 指标计算实现**
+    *   **描述:** 准确计算策略所需的所有技术指标。
+    *   **实现细节:**
+        *   EMA: `bt.indicators.EMA(self.closes[i], period=...)`
+        *   ADX: `bt.indicators.ADX(d, period=...)`
+        *   ATR: `bt.indicators.ATR(d, period=...)`
+        *   BBands: `bt.indicators.BollingerBands(self.closes[i], period=..., devfactor=...)`
+        *   RSI: `bt.indicators.RSI(self.closes[i], period=...)`
+        *   Highest High: `bt.indicators.Highest(self.highs[i], period=...)`
+        *   SMA Volume: `bt.indicators.SMA(self.volumes[i], period=...)`
+    *   **AC:** 指标值与已知参考值（如TA-Lib计算结果或手动计算）在允许的精度范围内一致。
+
+*   **FR-LOGIC-001: 市场状态判定**
+    *   **描述:** 实现每个bar上对每个数据源的市场状态分类。
+    *   **实现细节:**
+        *   精确实现 FR-LOGIC-001 (v3.0) 中定义的 `is_trend_up` 和 `is_range_confirmed` 公式。
+        *   根据 `is_trend_up`, `is_range_confirmed`, `self.params.etf_type` 确定 `market_state` 为 `'TREND_UP'`, `'RANGE_CONFIRMED'`, 或 `'UNCERTAIN_DO_NOT_TRADE'`。
+        *   记录 `MARKET_STATE_ASSESSED` 日志事件，包含 `data_name`, `market_state`, `close`, `ema_medium`, `ema_long`, `adx`, `bb_width_ratio` (布林带宽度/收盘价) 等关键值 (LR-006)。
+        *   使用 `try-except IndexError` 包裹指标访问，并在异常时跳过当前数据源的后续处理。
+    *   **AC:** 状态判定逻辑正确。日志包含所需信息。能处理指标初始化期间的不足数据。
+
+*   **FR-LOGIC-002: 趋势入场信号与价格计算**
+    *   **描述:** 实现趋势策略的入场信号检测及SL/TP价格计算。
+    *   **实现细节:**
+        *   精确实现 FR-LOGIC-002 (v3.0) 中定义的 `is_breakout` 和 `is_pullback` 公式。
+        *   触发条件: `self.params.etf_type == 'trend'` and `market_state == 'TREND_UP'` and `(is_breakout or is_pullback)`。
+        *   触发时，`entry_signal = True`, `potential_position_type = 'trend'`, `risk_per_trade_percent = self.params.max_risk_per_trade_trend`。
+        *   计算 `stop_loss_price_calc = entry_price_calc - self.params.trend_stop_loss_atr_mult * self.atrs[i][0]`。
+        *   验证 `stop_loss_price_calc < entry_price_calc`。若无效，`entry_signal = False`，记录 `TRADE_SKIPPED` 事件日志，包含原因 "Invalid SL Price"。
+        *   若SL有效，计算 `risk_per_share = entry_price_calc - stop_loss_price_calc`。
+        *   验证 `risk_per_share > 0`。若无效，`entry_signal = False`，记录 `TRADE_SKIPPED` 事件日志，包含原因 "Non-positive risk per share"。
+        *   若Risk有效，计算 `take_profit_price_calc = entry_price_calc + self.params.trend_take_profit_rratio * risk_per_share`。
+        *   记录 `SIGNAL_TRIGGERED` 事件日志，包含信号类型、数据源、计算出的SL/TP价格。
+    *   **AC:** 信号逻辑、价格计算、验证流程均正确。日志记录完整。
+
+*   **FR-LOGIC-003: 震荡入场信号与价格计算**
+    *   **描述:** 实现震荡策略的入场信号检测及SL/TP价格计算。
+    *   **实现细节:**
+        *   精确实现 FR-LOGIC-003 (v3.0) 中定义的 `is_range_buy` 公式。
+        *   触发条件: `self.params.etf_type == 'range'` and `market_state == 'RANGE_CONFIRMED'` and `is_range_buy`。
+        *   触发时，`entry_signal = True`, `potential_position_type = 'range'`, `risk_per_trade_percent = self.params.max_risk_per_trade_range`。
+        *   计算 `stop_loss_price_calc = self.lows[i][0] * (1 - self.params.range_stop_loss_buffer)`。
+        *   计算 `take_profit_price_calc = self.bbands[i].mid[0]`。
+        *   验证 `stop_loss_price_calc < entry_price_calc`。若无效，`entry_signal = False`，记录 `TRADE_SKIPPED` 事件日志，包含原因 "Invalid SL Price"。
+        *   记录 `SIGNAL_TRIGGERED` 事件日志，包含信号类型、数据源、计算出的SL/TP价格。
+    *   **AC:** 信号逻辑、价格计算、验证流程均正确。日志记录完整。
+
+*   **FR-ORDER-001: 仓位规模计算 (`_calculate_trade_size`)**
+    *   **描述:** 实现基于多重约束的精确仓位计算。
+    *   **实现细节:** 严格按照 RR-001 至 RR-006 的步骤和公式执行。
+    *   **输入/输出:** 见 FR-ORDER-001 (v3.0)。
+    *   **日志:** 对每个限制检查步骤（总风险、单标的、现金）导致的仓位调整或下单取消，均需记录 `ORDER_CALCULATION` 或 `TRADE_SKIPPED` 事件日志，包含调整前后的size及原因。
+    *   **AC:** 返回的仓位大小符合所有风险和资金约束，日志清晰反映计算过程和决策依据。
+
+*   **FR-ORDER-002: 括号订单执行与状态记录**
+    *   **描述:** 提交 `buy_bracket` 订单并正确记录相关状态。
+    *   **实现细节:**
+        *   当 `entry_signal and size > 0` 时执行。
+        *   调用 `self.buy_bracket(...)`。
+        *   **[关键实现]** 检查返回的 `bracket_orders = [main, stop, limit]`。
+        *   若 `main` is not None:
+            *   `self.orders[d] = main`
+            *   `self.stop_loss_prices[d] = stop.price` (如果 `stop` is not None)
+            *   `self.take_profit_prices[d] = limit.price` (如果 `limit` is not None)
+            *   `self.position_types[d] = potential_position_type`
+            *   **[可选增强: 交易周期ID]** 生成 `trade_cycle_id = uuid.uuid4().hex`，`self.order_ref_to_trade_id_map[main.ref] = trade_cycle_id`。
+            *   记录 `ORDER_SUBMITTED` 事件日志，包含 `order_ref=main.ref`, `order_type='BracketBuy'`, `size`, `entry_price`, `stop_loss_price`, `take_profit_price`, `trade_cycle_id` (如果实现)。
+        *   若 `main` is None，记录下单失败的错误日志。
+    *   **AC:** 订单成功提交，所有相关状态字典被正确更新，日志记录完整。
+
+*   **FR-ORDER-003: 手动平仓执行**
+    *   **描述:** 提交平仓订单。
+    *   **实现细节:**
+        *   调用 `order_close = self.close(data=d)`。
+        *   若 `order_close` is not None:
+            *   `self.orders[d] = order_close`
+            *   **[可选增强: 交易周期ID]** 尝试从被平仓的持仓关联的原始订单（如果能找到）获取`trade_cycle_id`。
+            *   记录 `ORDER_SUBMITTED` 事件日志，包含 `order_ref=order_close.ref`, `order_type='Close'`, `size=position.size`, `reason` ('StopLossHit'/'TakeProfitHit'/'HaltTrading')，`trade_cycle_id` (如果实现)。
+        *   若 `order_close` is None，记录平仓失败错误日志。
+    *   **AC:** 平仓订单成功提交，`orders`状态更新，日志包含原因。
+
+*   **FR-NOTIFY-001: 订单状态通知处理 (`notify_order`)**
+    *   **描述:** 响应式处理订单状态变化。
+    *   **实现细节:**
+        *   获取 `order.ref`, `order.status`, `order.data`。
+        *   **[可选增强: 交易周期ID]** `trade_id = self.order_ref_to_trade_id_map.get(order.ref)`。
+        *   记录 `ORDER_STATUS_UPDATE` 事件日志，包含 `order_ref`, `status`, `trade_id` (如果实现) 及成交细节（若有）。
+        *   `Completed`: 更新 `buy_prices`/`buy_comms`（买单），清空状态（卖单/平仓单）。
+        *   终态处理: `self.orders[order.data] = None`。 **[可选增强]** 清理 `order_ref_to_trade_id_map` 中对应的条目（如果不是Bracket的子订单）。
+    *   **AC:** 状态更新准确，内部字典维护正确，日志全面。
+
+*   **FR-NOTIFY-002: 交易完成通知处理 (`notify_trade`)**
+    *   **描述:** 处理完整交易周期的结束。
+    *   **实现细节:**
+        *   仅处理 `trade.isclosed`。
+        *   **[可选增强: 交易周期ID]** 尝试从 `trade.orders` 中的订单引用查找 `trade_cycle_id`。
+        *   记录 `TRADE_CLOSED` 事件日志，包含 `trade` 对象的关键属性和 `trade_cycle_id` (如果实现)。
+        *   清空该 `trade.data` 对应的所有状态字典。
+    *   **AC:** 交易关闭后状态清理彻底，日志包含所有必要信息。
+
+*   **FR-NOTIFY-003: 回撤风险管理 (`notify_cashvalue`)**
+    *   **描述:** 执行基于回撤的风险控制。
+    *   **实现细节:** 严格遵循 RR-007 的逻辑和状态转换。所有状态变更（`current_risk_multiplier`, `halt_trading`, `drawdown_level1_triggered`）必须伴随相应的 `RISK_EVENT` 日志记录，包含当前 `drawdown` 百分比和触发的阈值。
+    *   **AC:** 风险控制措施按预期触发和恢复，日志清晰记录风险事件。
+
+*   **FR-SYS-001: 序列化支持 (`__getstate__`, `__setstate__`)**
+    *   **描述:** 保证多进程优化兼容性。
+    *   **实现细节:** `__getstate__` 必须从返回的 `state` 字典中移除 `self.logger` 和其他可能的非标对象（如`self.datas_dict`中的数据对象引用，如果它们不可序列化）。
+    *   **AC:** `cerebro.run(maxcpus > 1)` 无 PicklingError。
+
+**4. 数据需求 (DR)**
+
+*   **DR-001: 数据格式:** Excel (`.xlsx`) 或 Backtrader 支持的其他 Pandas 可读格式。优先 `.xlsx`。
+*   **DR-002: 必需列 (映射后):** `datetime` (类型: datetime64[ns] 或可转换为此类型), `open`, `high`, `low`, `close`, `volume` (类型: numeric, 非负)。
+*   **DR-003: 可选列 (映射后):** `openinterest` (类型: numeric, 非负)。
+*   **DR-004: 数据约束:**
+    *   `datetime` 列必须是唯一的，并且严格按时间升序排列。
+    *   OHLC 关系: `high >= low`, `high >= open`, `high >= close`, `low <= open`, `low <= close` 必须成立。
+    *   数值列中不允许出现 `NaN`, `Infinity`。
+*   **DR-005: 数据加载函数 (`load_data_to_cerebro`)**
+    *   必须验证 DR-002, DR-003, DR-004 中定义的格式和约束。对不符合项应记录详细错误/警告并跳过该文件或行（取决于策略）。
+    *   必须使用 `pd.read_excel` 读取。
+    *   必须应用 `column_mapping`。
+    *   必须将 `datetime` 列转换并设为索引。
+    *   必须按 `fromdate`, `todate` 过滤。
+    *   **AC:** 函数能处理符合和不符合要求的数据文件，提供明确的反馈，返回成功加载的数据源数量。
+
+**5. 配置需求 (CR)**
+
+*   **CR-001: 配置源:** 所有配置项通过 `get_backtest_config()` 函数返回的字典提供。
+*   **CR-002: 必需配置项:** `optimize`, `initial_cash`, `commission_rate`, `data_files`, `column_mapping`, `openinterest_col`, `fromdate`, `todate`。
+*   **CR-003: 条件必需配置项:**
+    *   若 `optimize` is True: `optimization_ranges` 字典必须存在，且包含至少一个要优化的参数。
+    *   若 `optimize` is False: `single_run_params` 字典必须存在，且包含策略所需的所有非默认参数。
+*   **CR-004: 策略参数配置:** `AShareETFStrategy.params` 中定义的所有参数（包括日志相关参数 `log_level`, `log_async_write`, `log_path`）必须可以通过 `optimization_ranges` 或 `single_run_params` 进行设置。
+*   **CR-005: 其他配置:** `risk_free_rate`。
+*   **AC:** `get_backtest_config()` 返回包含所有必需和条件必需配置项的字典，类型符合预期。
+
+**6. 风险管理需求 (RR)**
+
+*   **RR-001 - RR-006:** 见 FR-ORDER-001 (仓位计算) 的实现细节和验收标准。
+*   **RR-007:** 见 FR-NOTIFY-003 (回撤管理) 的实现细节和验收标准。
+*   **AC:** 所有风险计算逻辑正确，限制检查严格执行，回撤管理按预期工作。
+
+**7. 日志需求 (LR)**
+
+*   **LR-001: 格式:** JSON Lines (JSONL), UTF-8 编码。
+*   **LR-002: 核心字段:** 每个日志条目必须包含 `timestamp` (UTC ISO 8601), `level`, `message`。
+*   **LR-003: 事件字段:** 推荐包含 `event_type` (来自 `EVENT_TYPES`), `strategy_id`, `data_name` (若适用), `trade_cycle_id` (若实现)。
+*   **LR-004: 事件数据:** 每个事件类型应记录其最相关的上下文数据（见各 FR 中的日志要求）。
+*   **LR-005: `JsonFormatter`:** 实现必须能处理不可序列化对象，并使用 `ensure_ascii=False`。
+*   **LR-006: `setup_logging`:** 实现必须满足 LR-003 (v3.0) 的所有要求。
+*   **LR-007: 异步写入:** 启用时，必须使用 `QueueHandler` 和 `QueueListener`。
+*   **AC:** 生成的日志文件符合格式要求，包含所有必要信息，事件记录与策略执行流程一致，异步写入不丢失日志（正常退出时）。
+
+**8. 输出需求 (OR)**
+
+*   **OR-001: 控制台:** 符合 OR-001 (v3.0) 要求。
+*   **OR-002: 日志文件:** 符合 OR-002 (v3.0) 和 LR 要求。
+*   **OR-003: 图表 (单次回测):** 符合 OR-003 (v3.0) 要求，图表应能正确显示多数据源（如果 Backtrader 绘图支持良好）或选择主要数据源绘制。
+
+**9. 优化需求 (OPT)**
+
+*   **OPT-001: 参数化:** 支持对 `config['optimization_ranges']` 中定义的参数进行优化。
+*   **OPT-002: 并行化:** `cerebro.run(maxcpus=...)` 必须可用且有效。
+*   **OPT-003: 结果评估与选择:** 使用 `analyze_optimization_results` 实现评分和最优选择。
+*   **OPT-004: 报告:** 使用 `print_optimization_summary` 输出详细优化报告。
+*   **OPT-005: 效率:** 优化运行时自动禁用 `stdstats` 和 `observers`。
+*   **AC:** 优化流程能正确执行，利用多核加速，结果评估符合逻辑，报告清晰。
+
+**10. 非功能需求 (NFR)**
+
+*   **NFR-001: 框架/语言:** Python >= 3.8, Backtrader >= 1.9.76 (或兼容版本)。
+*   **NFR-002: 依赖库:** pandas, numpy, matplotlib, openpyxl, pytz。需明确版本范围或使用依赖管理工具（如 `requirements.txt`）。
+*   **NFR-003: 性能:**
+    *   优化效率: 并行优化应显著快于单核。
+    *   单次回测速度: 对于 10 年日线数据 * 5 个标的，单次回测应在 5 分钟内完成（基准硬件待定）。
+*   **NFR-004: 可维护性:** 遵循 PEP 8 规范，注释覆盖率 > 70%，配置集中化，功能模块化。
+*   **NFR-005: 健壮性:** 实现 EH 中定义的错误处理机制。
+*   **NFR-006: 可测试性:** 核心逻辑（风险计算、信号判断）应易于提取和进行单元测试（虽然本文档不要求编写测试用例）。
+
+**11. 错误处理需求 (EH)**
+
+*   **EH-001: 数据加载:** 文件不存在 (`FileNotFoundError`) -> Log ERROR, continue。列缺失/错误 (`KeyError`, `ValueError`) -> Log ERROR, continue。日期解析失败 (`ValueError`, `TypeError`) -> Log WARNING, continue。空数据 -> Log WARNING, continue。
+*   **EH-002: 指标计算:** `IndexError` (初期) -> Log DEBUG (可选), continue inner loop。
+*   **EH-003: 风险计算:**
+    *   `stop_loss_price >= entry_price` -> Log WARNING, return 0 size。
+    *   `risk_per_share <= 0` -> Log WARNING, return 0 size。
+    *   `current_price_for_calc <= 0` -> Log WARNING, return 0 size。
+    *   除零错误 (`ZeroDivisionError`) 在计算 `size_raw` 时 -> Log ERROR, return 0 size。
+*   **EH-004: 结果分析:** `AttributeError` / `KeyError` / `TypeError` 在访问分析器结果时 -> Log WARNING, skip current result。
+*   **EH-005: 序列化:** `PicklingError` -> （由 `__getstate__` 预防）若仍发生，需调查原因。
+*   **EH-006: 日志:** `TypeError` 在 JSON 序列化时 -> (由 `JsonFormatter` 处理) 转换为字符串表示。文件写入错误 (`IOError`) -> (由 `logging` 库处理，可能打印到 stderr)。
+
+**12. 关键待办与改进 (TODO/Improvements)**
+
+*   **[CRITICAL] RR-TODO-001: 止损/止盈价格持久化与访问:** 必须实现 FR-ORDER-002 中描述的 SL/TP 价格存储机制，并确保 FR-ORDER-008 能正确读取用于手动检查。这是当前代码逻辑的重大缺陷。
+*   **[HIGH] FR-TODO-001: 交易周期ID (trade_cycle_id):** 全面实现 trade_cycle_id 的生成、关联和日志记录，以增强交易流程的可追溯性。
+*   **[MEDIUM] LR-TODO-001: 日志查询工具:** 开发或集成工具用于查询和分析生成的JSONL日志文件。
+*   **[MEDIUM] FR-TODO-002: 入场执行方式:** 增加市价单或次日开盘价入场的配置选项和逻辑实现。
+*   **[LOW] RR-TODO-002: 高级风险模型:** 考虑加入例如持仓相关性、波动率调整仓位等更复杂的风险管理技术。
+
+---
+
+这份 v3.1 文档旨在提供一个极其详尽和可执行的蓝图。它不仅描述了功能，还规定了实现细节、错误处理、日志标准和验收条件，并明确指出了需要优先解决的关键问题。希望能满足您对深度和落地性的要求。

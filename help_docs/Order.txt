@@ -1,0 +1,2658 @@
+﻿  
+
+historyon                          是否记录历史  
+
+history                            包含每次“更新”事件更新后的状态和使用 
+
+                                   的参数的列表，历史记录的第一个条目 
+
+                                   是开启事件，最后一个条目是关闭事件  
+
+   
+
+Order-订单  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:50:33 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+Cerebro 是 backtrader 中的关键控制系统，而 Strategy      （一个子类）是终端用户的关 
+
+键控制点。后者需要一个连接系统其他部分的方法，这就是订单发挥关键作用的地方。  
+
+订单将策略中的逻辑决策转化为适合 Broker 执行操作的消息。这是通过以下方式完成 
+
+的：  
+
+创建 #  
+
+通过 Strategy 的方法： buy  、 sell 和 close   （Strategy），这些方法返回一个订单 
+
+实例作为参考。  
+
+取消 #  
+
+通过 Strategy 的方法： cancel    （Strategy），该方法需要一个订单实例来操作。  
+
+订单也作为一种通信方式反馈给用户，通知 Broker 中的执行情况。  
+
+通知 #  
+
+通过 Strategy 的方法： notify_order     （Strategy），该方法报告一个订单实例。  
+
+订单创建 #  
+
+调用 buy  、 sell 和 close  时，以下参数适用于创建：  
+
+参数名                    默认值                     描述  
+
+  
+﻿  
+
+data                   None                   为哪个数据创建订单。如 
+
+                                              果为 None，则使用系统 
+
+                                              中的第一个数据，  
+
+                                              self.datas[0] 或  
+
+                                              self.data0  （又名  
+
+                                              self.data ）。  
+
+size                   None                   使用的单位数量。如果为  
+
+                                              None，则使用通过  
+
+                                              getsizer 获取的 sizer 实 
+
+                                              例来确定大小。  
+
+price                  None                   使用的价格（实时 Broker  
+
+                                              可能会对格式有实际限 
+
+                                              制，如果不符合最小刻度 
+
+                                              要求）。对于 Market 和  
+
+                                              Close 订单，None 是有 
+
+                                              效的（市场决定价格）。 
+
+                                              对于 Limit、Stop 和  
+
+                                              StopLimit 订单，该值决定 
+
+                                              触发点（在 Limit 的情况 
+
+                                              下，触发点显然是订单匹 
+
+                                              配的价格）。  
+
+plimit                 None                   仅适用于 StopLimit 订 
+
+                                              单。这是在 Stop 触发后 
+
+                                              设置隐含 Limit 订单的价 
+
+                                              格。  
+
+exectype               None                   可能的值：  
+
+                                              •  - Order.Market 或  
+
+                                              None ：市场订单将以下一 
+
+                                              个可用价格执行。在回测 
+
+                                              中，这将是下一根 K 线的 
+
+                                              开盘价。  
+
+                                              •  - Order.Limit  ：只 
+
+                                              能在给定价格或更好的价 
+
+  
+﻿  
+
+                                               格执行的订单。  
+
+                                               •   - Order.Stop  ：在价 
+
+                                               格触发时执行的订单，执 
+
+                                               行方式如同 Market 订 
+
+                                               单。  
+
+                                               •   -  
+                                               Order.StopLimit  ：在 
+
+                                               价格触发时执行的订单， 
+
+                                               作为隐含 Limit 订单执 
+
+                                               行，价格由 pricelimit  
+
+                                               给定。  
+
+valid                   None                   可能的值：  
+
+                                               •   - None ：生成一个不 
+
+                                               会过期的订单（即 Good  
+
+                                               till cancel），并在市场中 
+
+                                               保留直到匹配或取消。实 
+
+                                                际上，Broker 往往会强制 
+
+                                               一个时间限制，但这通常 
+
+                                               是很长时间，所以认为它 
+
+                                               不会过期。  
+
+                                               •   -  
+                                               datetime.datetime 或  
+
+                                               datetime.date 实例：使 
+
+                                               用给定的日期生成一个有 
+
+                                               效直到该日期的订单（即  
+
+                                               Good till date）。  
+
+                                               •   - Order.DAY 或 0 或  
+
+                                               timedelta()  ：生成一个 
+
+                                               有效期为一天的订单（即 
+
+                                                日订单），有效期直到会 
+
+                                               话结束。  
+
+                                               •   - 数值：假定为一个 
+
+                                               对应于 matplotlib 编码 
+
+                                                的日期时间值 
+
+                                                 （backtrader 使用的）， 
+
+                                               并用于生成一个有效期至 
+
+  
+﻿  
+
+                                             该时间的订单（即 Good  
+
+                                             till date）。  
+
+tradeid               0                      这是 backtrader 用来跟踪 
+
+                                             同一资产上重叠交易的内 
+
+                                             部值。在通知订单状态变 
+
+                                             化时，该 tradeid 会返回 
+
+                                             给策略。  
+
+**kwargs              /                      额外的 Broker 实现可能 
+
+                                             支持额外的参数。 
+
+                                             backtrader 会将 kwargs  
+
+                                             传递给创建的订单对象。  
+
+示例 #  
+
+如果 backtrader 直接支持的 4 种订单执行类型不够，例如对于 Interactive Brokers， 
+
+可以传递如下参数：  
+
+Python  
+orderType='LIT', lmtPrice=10.0, auxPrice=9.8  
+
+这将覆盖 backtrader 的设置，生成一个触及价格为 9.8 且限价为  10.0 的 LIMIT IF  
+
+TOUCHED 订单。  
+
+注意：  
+
+close 方法将检查当前仓位，并相应地使用 buy 或 sell 有效地关闭仓位。除非参数 
+
+由用户输入，否则大小也将自动计算，在这种情况下可以实现部分关闭或反转。  
+
+订单通知 #  
+
+要接收通知，必须在用户子类的 Strategy 中重写 notify_order 方法（默认行为是什 
+
+么都不做）。以下适用于这些通知：  
+
+•  在策略的 next 方法调用之前发出。  
+
+•  在同一个  next 循环中，可能（并且会）多次发生相同或不同状态的相同订单通知。  
+
+•  订单可能会被提交给 Broker，被接受并在 next 再次调用之前完成执行。  
+
+在这种情况下，至少会发生 3 次通知，状态值如下：  
+
+•  Order.Submitted  因为订单已发送给 Broker。  
+
+  
+﻿  
+
+•  Order.Accepted  因为订单已被 Broker 接受并等待执行。  
+
+•  Order.Completed  因为在示例中订单已快速匹配并完全成交（通常适用于  
+
+Market 订单）。  
+
+对于 Order.Partial 状态，即使在回测 Broker 中（不考虑匹配量）不会看到，但在 
+
+实际 Broker 中肯定会看到。  
+
+实际 Broker 可能会在更新仓位之前发出一次或多次执行通知，这些执行将构成一个  
+
+Order.Partial 通知。  
+
+实际执行数据在属性： order.executed  中，这是一个 OrderData 类型的对象，具 
+
+有常见的字段如大小和价格。  
+
+创建时的值存储在 order.created  中，在订单生命周期中保持不变。  
+
+订单状态值 #  
+
+以下定义：  
+
+•  Order.Created  ：在创建订单实例时设置。除非手动创建订单实例，否则终端用 
+
+户不会看到该状态。  
+
+•  Order.Submitted  ：在订单实例已传输给  Broker  时设置。这只是意味着已发送。 
+
+在回测模式中这是立即的，但在实际 Broker 中可能需要时间，可能在转发给交易所时 
+
+才通知。  
+
+•  Order.Accepted  ：Broker  已接受订单，并在系统中（或已在交易所）等待执行， 
+
+参数如执行类型、大小、价格和有效期。  
+
+•  Order.Partial  ：订单已部分执行。 order.executed 包含当前填充的大小和平 
+
+均价格。  
+
+    ￮  order.executed.exbits 包含部分填充的完整执行位列表。  
+
+•  Order.Complete  ：订单已完全填充平均价格。  
+
+•  Order.Rejected  ：Broker  拒绝了订单。可能是某个参数（如有效期）不被接受， 
+
+订单无法接受。  
+
+    ￮  原因会通过策略的 notify_store 方法通知。虽然这可能显得奇怪，但实际  
+
+    Broker 会通过事件通知，这可能与订单直接相关或无关。但可以在  
+
+    notify_store  中看到 Broker 的通知。  
+
+    ￮  在回测 Broker 中不会看到此状态。  
+
+•  Order.Margin  ：订单执行将导致保证金要求，之前接受的订单已从系统中移除。  
+
+•  Order.Cancelled  （或 Order.Canceled ）：用户请求取消的确认。  
+
+  
+﻿  
+
+    ￮  必须考虑，通过策略的 cancel 方法请求取消订单并不保证取消。订单可能已 
+
+    经执行，但此执行可能尚未被 Broker 通知，并且通知可能尚未传递给策略。  
+
+•   Order.Expired  ：之前接受的订单具有时间有效性，已过期并被从系统中移除。  
+
+引用：Order 及相关类 #  
+
+这些对象是 backtrader 生态系统中的通用类。在与其他 Broker 操作时，它们可能已 
+
+扩展和/或包含额外的嵌入信息。请参阅相应 Broker 的参考。  
+
+Python  
+class backtrader.order.Order()  
+
+持有创建/执行数据和订单类型的类。  
+
+订单可能具有以下状态：  
+
+•   Submitted  ：发送给 Broker，等待确认。  
+
+•   Accepted  ：被 Broker 接受。  
+
+•   Partial  ：部分执行。  
+
+•   Completed  ：完全执行。  
+
+•   Canceled/Cancelled  ：被用户取消。  
+
+•   Expired  ：过期。  
+
+•   Margin  ：没有足够的现金执行订单。  
+
+•   Rejected  ：被 Broker 拒绝。  
+
+    ￮  这可能发生在订单提交期间（因此订单不会达到 Accepted 状态），或者在执 
+
+    行前因每根新 K 线价格变化，现金被其他来源（如期货类工具）抽取导致拒绝。  
+
+成员属性：  
+
+•   ref  ：唯一订单标识符。  
+
+•   created  ：持有创建数据的 OrderData  。  
+
+•   executed  ：持有执行数据的 OrderData  。  
+
+•   info  ：通过 addinfo() 方法传递的自定义信息。以子类化的 OrderedDict 形式 
+
+保存，键也可以使用  . 符号指定。  
+
+用户方法：  
+
+•   isbuy()  ：返回一个布尔值，指示订单是否买入。  
+
+•   issell()  ：返回一个布尔值，指示订单是否卖出。  
+
+  
+﻿  
+
+•   alive()  ：返回一个布尔值，如果订单状态为 Partial 或 Accepted  。  
+
+Python  
+class backtrader.order.OrderData(dt=None, size=0, price=0.0,  
+pricelimit=0.0, remsize  
+=0, pclose=0.0, trailamount=0.0, trailpercent=0.0)  
+
+持有创建和执行实际订单数据。  
+
+在创建情况下，请求的数据，在执行情况下，实际结果。  
+
+成员属性：  
+
+•   exbits  ：此 OrderData  的 OrderExecutionBits  的可迭代对象。  
+
+•   dt  ：日期时间（浮点数）创建/执行时间。  
+
+•   size  ：请求/执行大小。  
+
+•   price  ：执行价格。注意：如果没有价格和 pricelimit  ，订单创建时的收盘价 
+
+将作为参考。  
+
+•   pricelimit  ：StopLimit 的价格限制（首先有触发）。  
+
+•   trailamount  ：追踪止损的绝对价格距离。  
+
+•   trailpercent  ：追踪止损的百分比价格距离。  
+
+•   value  ：整个位大小的市场价值。  
+
+•   comm  ：整个位执行的佣金。  
+
+•   pnl  ：此位产生的盈亏（如果有关闭）。  
+
+•   margin  ：订单产生的保证金（如果有）。  
+
+•   psize  ：当前未平仓头寸大小。  
+
+•   pprice  ：当前未平仓头寸价格。  
+
+Python  
+class backtrader.order.OrderExecutionBit(dt=None, size=0,  
+price=0.0, closed=0, closedvalue=0.0, closedcomm=0.0, opened=0,  
+openedvalue=0.0, openedcomm=0.0, pnl=0.0, psize=0, pprice=0.0)  
+
+旨在持有订单执行信息。“位”不确定订单是否已完全/部分执行，只是持有信息。  
+
+成员属性：  
+
+•   dt  ：日期时间（浮点数）执行时间。  
+
+•   size  ：执行数量。  
+
+  
+﻿  
+
+•   price  ：执行价格。  
+
+•   closed  ：执行关闭了多少现有头寸。  
+
+•   opened  ：执行打开了多少新头寸。  
+
+•   openedvalue  ：新开部分的市场价值。  
+
+•   closedvalue  ：关闭部分的市场价值。  
+
+•   closedcomm  ：关闭部分的佣金。  
+
+•   openedcomm  ：打开部分的佣金。  
+
+•   value  ：整个位大小的市场价值。  
+
+•   comm  ：整个位执行的佣金。  
+
+•   pnl  ：此位产生的盈亏（如果有关闭）。  
+
+•   psize  ：当前未平仓头寸大小。  
+
+•   pprice  ：当前未平仓头寸价格。  
+
+Order-创建/执行  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:50:38 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+  
+
+对于订单管理， Backtrader 提供了 3 种基本操作：  
+
+•   buy  
+
+•   sell  
+
+•   cancel  
+
+注意：  ：一个更新操作显然是合乎逻辑的，但常识告诉我们，这种方法主要用于使用 
+
+判断性交易方法的手动操作员。  
+
+对于订单执行逻辑，提供以下执行类型：  
+
+•   市价订单（Market）  
+
+•   收盘价订单（Close）  
+
+•   限价订单（Limit）  
+
+•   止损订单（Stop）  
+
+  
+﻿  
+
+•   止损限价订单（StopLimit）  
+
+订单管理 #  
+
+一些示例：  
+
+Python  
+# 购买主数据，使用 sizer 的默认股份，市价订单 order = self.buy()  
+
+# 市价订单 - 有效期将被 "忽略"order =  
+self.buy(valid=datetime.datetime.now() +  
+datetime.timedelta(days=3))  
+# 市价订单 - 价格将被忽略 order = self.buy(price=self.data.close[0]  
+* 1.02)  
+
+# 市价订单 - 手动股份 order = self.buy(size=25)  
+
+# 限价订单 - 想要设置价格并可以设置有效期 order =  
+self.buy(exectype=Order.Limit,  
+                 price=self.data.close[0] * 1.02,  
+                 valid=datetime.datetime.now() +  
+datetime.timedelta(days=3))  
+# 止损限价订单 - 想要设置价格，价格限制 order =  
+self.buy(exectype=Order.StopLimit,  
+                 price=self.data.close[0] * 1.02,  
+                 plimit=self.data.close[0] * 1.07)  
+# 取消现有订单 self.broker.cancel(order)  
+
+注意：  
+
+所有订单类型都可以通过创建一个订单实例（或其子类之一）并传递给  broker  来创建：  
+
+Python  
+order = self.broker.submit(order)  
+
+注意：  
+
+Broker 中也有 buy 和 sell 操作，但它们对默认参数的容忍度较低。  
+
+订单执行逻辑 #  
+
+Broker 使用两个主要指导原则（假设？）进行订单执行。  
+
+原则一 #  
+
+当前数据已经发生，不能用于执行订单。  
+
+如果策略中的逻辑类似于：  
+
+  
+﻿  
+
+Python  
+if self.data.close > self.sma:  # 其中 sma 是简单移动平均线     
+self.buy()  
+
+期望不能是订单将以逻辑中检查的收盘价执行，因为它已经发生。  
+
+原则二 #  
+
+订单可以在下一组开盘/最高/最低/收盘价格范围内首先执行（以及订单中设置的条件）。  
+
+原则三 #  
+
+成交量不起作用，实际交易中，如果交易者选择非流动性资产或恰好触及价格栏的高/ 
+
+低点，它实际上会起作用。  
+
+但触及高/低点的情况很少发生（如果发生 ……你不需要 backtrader），所选择的资产 
+
+将有足够的流动性来吸收任何正常交易的订单。  
+
+市价订单（Market） #  
+
+执行：  
+
+•  下一个价格栏的开盘价（通常称为 bar）  
+
+理由：  
+
+•  如果逻辑在时间点 X 执行并发出市价订单，下一个将发生的价格点是即将到来的 
+
+开盘价。  
+
+注意：  
+
+•  该订单始终执行，并忽略任何用于创建它的价格和有效期参数。  
+
+收盘价订单（Close） #  
+
+执行：  
+
+•  使用下一个价格栏的收盘价，当下一个价格栏实际关闭时。  
+
+理由：  
+
+•  大多数回测数据源已经包含已关闭的价格栏，订单将立即以下一个价格栏的收盘 
+
+价执行。日数据源是最常见的示例。  
+
+•  但系统可以被“tick”价格喂入，实际的价格栏（时间/ 日期）不断被新 tick 更新，而 
+
+不会移动到下一个价格栏（因为时间和/或日期未改变）。  
+
+•  只有当时间或日期改变时，价格栏才真正关闭，订单才执行。  
+
+  
+﻿  
+
+限价订单（Limit） #  
+
+执行：  
+
+•  如果数据触及在订单创建时设置的价格，则从下一个价格栏开始执行。  
+
+•  如果设置了有效期并到达时间点，订单将被取消。  
+
+价格匹配：  
+
+•  backtrader 尝试为限价订单提供最现实的执行价格。  
+
+•  使用 4 个价格点（开盘价/最高价/最低价/收盘价）可以部分推断出请求的价格是 
+
+否可以改进。  
+
+•  对于买入订单：  
+
+   ￮  情况 1：如果价格栏的开盘价低于限价，订单立即以开盘价执行。订单在会话 
+
+   的开盘阶段被扫除。  
+
+   ￮  情况 2 ：如果开盘价没有低于限价，但最低价低于限价，那么限价在会话期间 
+
+   已经出现，订单可以执行。  
+
+•  对于卖出订单，逻辑显然是相反的。  
+
+止损订单（Stop） #  
+
+执行：  
+
+•  如果数据触及在订单创建时设置的触发价格，则从下一个价格栏开始执行。  
+
+•  如果设置了有效期并到达时间点，订单将被取消。  
+
+价格匹配：  
+
+•  backtrader 尝试为止损订单提供最现实的触发价格。  
+
+•  使用 4 个价格点（开盘价/最高价/最低价/收盘价）可以部分推断出请求的价格是 
+
+否可以改进。  
+
+•  对于买入的止损订单：  
+
+   ￮  情况 1：如果价格栏的开盘价高于止损价，订单立即以开盘价执行。旨在停止 
+
+   亏损，如果价格上涨对现有空头头寸不利。  
+
+   ￮  情况 2 ：如果开盘价没有高于止损价，但最高价高于止损价，那么止损价在会 
+
+   话期间已经出现，订单可以执行。  
+
+•  对于卖出订单，逻辑显然是相反的。  
+
+  
+﻿  
+
+止损限价订单（StopLimit） #  
+
+执行：  
+
+•  触发价格从下一个价格栏开始启动订单。  
+
+价格匹配：  
+
+•  触发：使用止损匹配逻辑（但仅触发并将订单转变为限价订单）。  
+
+•   限价：使用限价匹配逻辑。  
+
+一些示例 #  
+
+正如图片（带代码）所示，总是胜过几百万字的长篇解释。请注意，代码段集中在订 
+
+单创建部分。完整代码在底部。  
+
+将使用一个价格在简单移动平均线上/下方收盘的策略来生成买入/卖出信号。  
+
+信号在图表底部可见：使用交叉指示器的交叉信号。  
+
+将保存生成的“买入”订单的引用，以只允许系统中最多同时存在一个订单。  
+
+执行类型：市价订单（Market） #  
+
+在图表中可以看到订单在生成信号后一根价格栏后以开盘价执行。  
+
+Python  
+if self.p.exectype ==  'Market':  
+
+    self.buy(exectype=bt.Order.Market)  # 如果未给定，则默认  
+    self.log('BUY CREATE, exectype Market, price %.2f' %              
+self.data.close[0])  
+
+执行类型：收盘价订单（Close） #  
+
+现在订单也是在生成信号后一根价格栏后执行，但以收盘价执行。  
+
+Python  
+elif self.p.exectype ==  'Close':  
+    self.buy(exectype=bt.Order.Close)  
+    self.log('BUY CREATE, exectype Close, price %.2f' %              
+self.data.close[0])  
+
+执行类型：限价订单（Limit） #  
+
+有效期在传递为参数时会提前计算。  
+
+  
+﻿  
+
+Python  
+if self.p.valid:  
+    valid = self.data.datetime.date(0) +             
+datetime.timedelta(days=self.p.valid)  
+else:  
+    valid = None  
+
+设置一个比信号生成价格（信号栏的收盘价）低 1%的限价。请注意，这阻止了上面许 
+
+多订单的执行。  
+
+Python  
+elif self.p.exectype ==  'Limit':  
+    price = self.data.close * (1.0 - self.p.perc1 / 100.0)  
+    self.buy(exectype=bt.Order.Limit, price=price, valid=valid)  
+    if self.p.valid:  
+        txt =  'BUY CREATE, exectype Limit, price %.2f, valid: %s'         
+self.log(txt % (price, valid.strftime('%Y-%m-%d')))  
+    else:  
+        txt =  'BUY CREATE, exectype Limit, price %.2f'         
+self.log(txt % price)  
+
+执行类型：带有效期的限价订单 #  
+
+为了不永远等待一个可能只在价格对“买入”订单不利时执行的限价订单，订单只会有效 
+
+4 个（日历）天。  
+
+Python  
+$  ./order-execution-samples.py --exectype Limit --perc1 1 --valid  
+4  
+
+执行类型：止损订单（Stop） #  
+
+设置一个比信号价格  
+
+高 1%的止损价格。这意味着策略只有在信号生成后价格继续上涨时才买入，这可以解 
+
+释为一种强劲信号。  
+
+Python  
+elif self.p.exectype ==  'Stop':  
+    price = self.data.close * (1.0 + self.p.perc1 / 100.0)  
+    self.buy(exectype=bt.Order.Stop, price=price, valid=valid)  
+    if self.p.valid:  
+        txt =  'BUY CREATE, exectype Stop, price %.2f, valid: %s'         
+
+  
+﻿  
+
+self.log(txt % (price, valid.strftime('%Y-%m-%d')))  
+    else:  
+        txt =  'BUY CREATE, exectype Stop, price %.2f'         
+self.log(txt % price)  
+
+执行类型：止损限价订单（StopLimit） #  
+
+设置一个比信号价格高 1%的止损价格。但限价设置为比信号（收盘）价格高 0.5%， 
+
+这可以解释为：等待强劲信号的出现，但不要买入高点。等待下跌。  
+
+Python  
+elif self.p.exectype ==  'StopLimit':  
+    price = self.data.close * (1.0 + self.p.perc1 / 100.0)  
+    plimit = self.data.close * (1.0 + self.p.perc2 / 100.0)  
+    self.buy(exectype=bt.Order.StopLimit, price=price,  
+valid=valid,  
+             plimit=plimit)  
+    if self.p.valid:  
+        txt = ('BUY CREATE, exectype StopLimit, price %.2f,'                
+' valid: %s, pricelimit: %.2f')  
+        self.log(txt % (price, valid.strftime('%Y-%m-%d'),  
+plimit))  
+    else:  
+        txt = ('BUY CREATE, exectype StopLimit, price %.2f,'                
+' pricelimit: %.2f')  
+        self.log(txt % (price, plimit))  
+
+测试脚本执行 #  
+
+详见命令行帮助：  
+
+Bash  
+$ ./order-execution-samples.py --help  
+usage: order-execution-samples.py [-h] [--infile INFILE]                                   
+[--csvformat {bt,visualchart,sierrachart,yahoo,yahoo_unreversed}]                                   
+[--fromdate FROMDATE] [--todate TODATE]                                   
+[--plot] [--plotstyle {bar,line,candle}]                                   
+[--numfigs NUMFIGS] [--smaperiod SMAPERIOD]                                   
+[--exectype EXECTYPE] [--valid VALID]                                   
+[--perc1 PERC1] [--perc2 PERC2]  
+
+完整代码 #  
+
+  
+﻿  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import datetime  
+import os.path  
+import time  
+import sys  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+import backtrader.indicators as btind  
+class OrderExecutionStrategy(bt.Strategy):  
+    params = (  
+        ('smaperiod', 15),  
+        ('exectype', 'Market'),  
+        ('perc1', 3),  
+        ('perc2', 1),  
+        ('valid', 4),  
+    )  
+    def log(self, txt, dt=None):  
+         ''' Logging function for this strategy'''        dt = dt  
+or self.data.datetime[0]  
+        if isinstance(dt, float):  
+            dt = bt.num2date(dt)  
+        print('%s, %s' % (dt.isoformat(), txt))  
+    def notify_order(self, order):  
+        if order.status in [order.Submitted, order.Accepted]:  
+            # Buy/Sell order submitted/accepted to/by broker -  
+Nothing to do            self.log('ORDER ACCEPTED/SUBMITTED',  
+dt=order.created.dt)  
+            self.order = order  
+            return  
+        if order.status in [order.Expired]:  
+            self.log('BUY EXPIRED')  
+        elif order.status in [order.Completed]:  
+            if order.isbuy():  
+                self.log(  
+                     'BUY EXECUTED, Price: %.2f, Cost: %.2f,  
+Comm %.2f' %                    (order.executed.price,  
+                     order.executed.value,  
+                     order.executed.comm))  
+            else:  # Sell                self.log('SELL EXECUTED,  
+Price: %.2f, Cost: %.2f, Comm %.2f' %                          
+(order.executed.price,  
+
+  
+﻿  
+
+                          order.executed.value,  
+                          order.executed.comm))  
+        # Sentinel to None: new orders allowed        self .order =  
+None  
+    def __init__(self):  
+        # SimpleMovingAverage on main data        # Equivalent to  
+-> sma = btind.SMA(self.data, period=self.p.smaperiod)        sma  
+= btind.SMA(period=self.p.smaperiod)  
+        # CrossOver (1: up, -1: down) close / sma         
+self.buysell = btind.CrossOver(self.data.close, sma, plot=True)  
+        # Sentinel to None: new orders allowed        self .order =  
+None  
+    def next(self):  
+        if self.order:  
+            # An order is pending ... nothing can be done             
+return  
+        # Check if we are in the market        if self .position:  
+            # In the market - check if it's the time to sell             
+if self.buysell < 0:  
+                self.log('SELL CREATE, %.2f' % self.data.close[0])  
+                self.sell()  
+        elif self.buysell > 0:  
+            if self.p.valid:  
+                valid = self.data.datetime.date(0) + \  
+                        datetime.timedelta(days=self.p.valid)  
+            else:  
+                valid = None  
+            # Not in the market and signal to buy            if  
+self.p.exectype ==  'Market':  
+                self.buy(exectype=bt.Order.Market)  # default if  
+not given  
+                self.log('BUY CREATE, exectype Market,  
+price %.2f' %                         self.data.close[0])  
+            elif self.p.exectype ==  'Close':  
+                self.buy(exectype=bt.Order.Close)  
+                self.log('BUY CREATE, exectype Close,  
+price %.2f' %                         self.data.close[0])  
+            elif self.p.exectype ==  'Limit':  
+                price = self.data.close * (1.0 - self.p.perc1 /  
+100.0)  
+                self.buy(exectype=bt.Order.Limit, price=price,  
+valid=valid)  
+                if self.p.valid:  
+                    txt =  'BUY CREATE, exectype Limit, price %.2f,  
+
+  
+﻿  
+
+valid: %s'                    self.log(txt % (price,  
+valid.strftime('%Y-%m-%d')))  
+                else:  
+                    txt =  'BUY CREATE, exectype Limit, price %.2f'                     
+self.log(txt % price)  
+            elif self.p.exectype ==  'Stop':  
+                price = self.data.close * (1.0 + self.p.perc1 /  
+100.0)  
+                self.buy(exectype=bt.Order.Stop, price=price,  
+valid=valid)  
+                if self.p.valid:  
+                    txt =  'BUY CREATE, exectype Stop, price %.2f,  
+valid: %s'                    self.log(txt % (price,  
+valid.strftime('%Y-%m-%d')))  
+                else:  
+                    txt =  'BUY CREATE, exectype Stop, price %.2f'                     
+self.log(txt % price)  
+            elif self.p.exectype ==  'StopLimit':  
+                price = self.data.close * (1.0 + self.p.perc1 /  
+100.0)  
+                plimit = self.data.close * (1.0 + self.p.perc2 /  
+100.0)  
+                self.buy(exectype=bt.Order.StopLimit, price=price,  
+valid=valid,  
+                         plimit=plimit)  
+                if self.p.valid:  
+                    txt = ('BUY CREATE, exectype StopLimit,  
+price %.2f,'                            ' valid: %s,  
+pricelimit: %.2f')  
+                    self.log(txt % (price, valid.strftime('%Y-%m- 
+%d'), plimit))  
+                else:  
+                    txt = ('BUY CREATE, exectype StopLimit,  
+price %.2f,'                            ' pricelimit: %.2f')  
+                    self.log(txt % (price, plimit))  
+def runstrat():  
+    args = parse_args()  
+    cerebro = bt.Cerebro()  
+    data = getdata(args)  
+    cerebro.adddata(data)  
+    cerebro.addstrategy(  
+        OrderExecutionStrategy,  
+        exectype=args.exectype,  
+        perc1=args.perc1,  
+
+  
+﻿  
+
+        perc2=args.perc2,  
+        valid=args.valid,  
+        smaperiod=args.smaperiod  
+    )  
+    cerebro.run()  
+    if args.plot:  
+        cerebro.plot(numfigs=args.numfigs, style=args.plotstyle)  
+def getdata(args):  
+    dataformat = dict(  
+        bt=btfeeds.BacktraderCSVData,  
+        visualchart=btfeeds.VChartCSVData,  
+        sierrachart=btfeeds.SierraChartCSVData,  
+        yahoo=btfeeds.YahooFinanceCSVData,  
+        yahoo_unreversed=btfeeds.YahooFinanceCSVData  
+    )  
+    dfkwargs = dict()  
+    if args.csvformat ==  'yahoo_unreversed':  
+        dfkwargs['reverse'] = True  
+    if args.fromdate:  
+        fromdate = datetime.datetime.strptime(args.fromdate,  '%Y- 
+%m-%d')  
+        dfkwargs['fromdate'] = fromdate  
+    if args.todate:  
+        fromdate = datetime.datetime.strptime(args.todate,  '%Y-%m- 
+%d')  
+        dfkwargs['todate'] = todate  
+     
+ dfkwargs[ 'dataname'] = args.infile  
+    dfcls = dataformat[args.csvformat]  
+    return dfcls(**dfkwargs)  
+def parse_args():  
+    parser = argparse.ArgumentParser(  
+        description='Showcase for Order Execution Types')  
+    parser.add_argument('--infile', '-i', required=False,  
+                        default='../../datas/2006-day-001.txt',  
+                        help='File to be read in')  
+    parser.add_argument('--csvformat', '-c', required=False,  
+default='bt',  
+                        choices=['bt', 'visualchart',  
+'sierrachart',  
+                                  'yahoo', 'yahoo_unreversed'],  
+                        help='CSV Format')  
+    parser.add_argument('--fromdate', '-f', required=False,  
+default=None,  
+
+  
+﻿  
+
+                        help='Starting date in YYYY-MM-DD format')  
+    parser.add_argument('--todate', '-t', required=False,  
+default=None,  
+                        help='Ending date in YYYY-MM-DD format')  
+    parser.add_argument('--plot', '-p', action='store_false',  
+required=False,  
+                        help='Plot the read data')  
+    parser.add_argument('--plotstyle', '-ps', required=False,  
+default='bar',  
+                        choices=['bar', 'line', 'candle'],  
+                        help='Plot the read data')  
+    parser.add_argument('--numfigs', '-n', required=False,  
+default=1,  
+                        help='Plot using n figures')  
+    parser.add_argument('--smaperiod', '-s', required=False,  
+default=15,  
+                        help='Simple Moving Average Period')  
+    parser.add_argument('--exectype', '-e', required=False,  
+default='Market',  
+                        help=('Execution Type: Market (default),  
+Close, Limit,'                               ' Stop, StopLimit'))  
+    parser.add_argument('--valid', '-v', required=False,  
+default=0, type=int,  
+                        help='Validity for Limit sample: default 0  
+days')  
+    parser.add_argument('--perc1', '-p1', required=False,  
+default=0.0,  
+                        type=float,  
+                        help=('%% distance from close price at  
+order creation'                               ' time for the  
+limit/trigger price in Limit/Stop'                               '  
+orders'))  
+    parser.add_argument('--perc2', '-p2', required=False,  
+default=0.0,  
+                        type=float,  
+                        help=('%% distance from close price at  
+order creation'                               ' time for the limit  
+price in StopLimit orders'))  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:50:38 (UTC+8)  
+
+  
+﻿  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+Order- 目标订单  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:53:16 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+在  1.8.10.96 版本之前，策略方法 buy 和 sell 可通过 sizer 实现智能持仓， sizer 负 
+
+责确定持仓的大小。然而， Sizer 不能决定操作是买入还是卖出。这就需要一个新的 
+
+概念，在决策中加入一个小的智能层。这就是策略中的 order_target_xxx 方法家族。  
+
+受 zipline 的启发，这些方法提供了简单指定最终目标的机会，无论目标是：  
+
+•   size -> 特定资产的股份或合约数量  
+
+•   value -> 资产在投资组合中的货币单位价值  
+
+•   percent -> 当前投资组合中资产的百分比值  
+
+注意  ：这些方法的在 Strategy 类的参考文档中可以找到。简言之，这些方法使用与  
+
+buy 和  sell 相同的参数签名，只是将 size 参数替换为 target 参数。  
+
+这些方法的核心在于指定最终目标，然后方法决定操作是买入还是卖出。所有三种方 
+
+法的逻辑相同。以下是 order_target_size 的工作方式：  
+
+如果目标大于当前仓位，则发出买入指令，买入的数量为 target  -  position_size。例如：  
+
+•   仓位：0 ，目标：7 -> buy(size=7 - 0) -> buy(size=7)  
+
+•   仓位：3 ，目标：7 -> buy(size=7 - 3) -> buy(size=4)  
+
+•   仓位：-3 ，目标：7 -> buy(size=7 - -3) -> buy(size=10)  
+
+•   仓位：-3 ，目标：-2 -> buy(size=-2 - -3) -> buy(size=1)  
+
+如果目标小于当前仓位，则发出卖出指令，卖出的数量为 position_size  -  target 。例如：  
+
+•   仓位：0 ，目标：-7 -> sell(size=0 - -7) -> sell(size=7)  
+
+•   仓位：3 ，目标：-7 -> sell(size=3 - -7) -> sell(size=10)  
+
+•   仓位：-3 ，目标：-7 -> sell(size=-3 - -7) -> sell(size=4)  
+
+•   仓位：3 ，目标：2 -> sell(size=3 - 2) -> sell(size=1)  
+
+当使用 order_target_value 设定目标值时，会考虑资产在投资组合中的当前价值和持 
+
+仓量，以决定最终的操作。逻辑如下：  
+
+•   如果目标值大于当前值且仓位>=0 -> 买入  
+
+  
+﻿  
+
+•   如果目标值大于当前值且仓位<0 -> 卖出  
+
+•   如果目标值小于当前值且仓位>=0 -> 卖出  
+
+•   如果目标值小于当前值且仓位<0 -> 买入  
+
+order_target_percent  的逻辑与 order_target_value 相同。该方法简单地根据当 
+
+前投资组合的总价值确定资产的目标价值。  
+
+示例 #  
+
+Backtrader 尝试为每个新功能提供一个示例，这也不例外。该示例在 samples  目录 
+
+下的 order_target 子目录中。示例逻辑比较简单，仅用于测试结果是否如预期：  
+
+•   在奇数月（1 月、3 月等），使用日期作为目标（在 order_target_value  的情况 
+
+下，将日期乘以 1000）；  
+
+•   在偶数月（2 月、4 月等），使用 31 减去日期作为目标；  
+
+order_target_size #  
+
+我们来看 1 月和 2 月的情况。  
+
+Bash  
+$ ./order_target.py --target-size --plot  
+0001 - 2005-01-03 - Position Size:     00 - Value 1000000.00  
+0001 - 2005-01-03 - Order Target Size: 030002 - 2005-01-04 -  
+Position Size:     03 - Value 999994.39  
+0002 - 2005-01-04 - Order Target Size: 040003 - 2005-01-05 -  
+Position Size:     04 - Value 999992.48  
+0003 - 2005-01-05 - Order Target Size: 050004 - 2005-01-06 -  
+Position Size:     05 - Value 999988.79  
+...  
+0020 - 2005-01-31 - Position Size:     28 - Value 999968.70  
+0020 - 2005-01-31 - Order Target Size: 310021 - 2005-02-01 -  
+Position Size:     31 - Value 999954.68  
+0021 - 2005-02-01 - Order Target Size: 300022 - 2005-02-02 -  
+Position Size:     30 - Value 999979.65  
+0022 - 2005-02-02 - Order Target Size: 290023 - 2005-02-03 -  
+Position Size:     29 - Value 999966.33  
+0023 - 2005-02-03 - Order Target Size: 28...  
+
+在 1 月，目标从年初第一个交易日的 3 开始增加。持仓量从 0 增加到 3 ，然后每次增 
+
+加 1。  
+
+在 1 月结束时，最后一个目标是 31 ，当进入 2 月时，该持仓量被报告出来，新的目标 
+
+变为 30 ，并以 1 的递减变化。  
+
+  
+﻿  
+
+order_target_value #  
+
+期望有类似的行为：  
+
+Bash  
+$ ./order_target.py --target-value --plot  
+0001 - 2005-01-03 - Position Size:     00 - Value 1000000.00  
+0001 - 2005-01-03 - data value 0.00  
+0001 - 2005-01-03 - Order Target Value: 3000.00  
+0002 - 2005-01-04 - Position Size:     78 - Value 999854.14  
+0002 - 2005-01-04 - data value 2853.24  
+0002 - 2005-01-04 - Order Target Value: 4000.00  
+0003 - 2005-01-05 - Position Size:     109 - Value 999801.68  
+0003 - 2005-01-05 - data value 3938.17  
+0003 - 2005-01-05 - Order Target Value: 5000.00  
+0004 - 2005-01-06 - Position Size:     138 - Value 999699.57  
+...  
+0020 - 2005-01-31 - Position Size:     808 - Value 999206.37  
+0020 - 2005-01-31 - data value 28449.68  
+0020 - 2005-01-31 - Order Target Value: 31000.00  
+0021 - 2005-02-01 - Position Size:     880 - Value 998807.33  
+0021 - 2005-02-01 - data value 30580.00  
+0021 - 2005-02-01 - Order Target Value: 30000.00  
+0022 - 2005-02-02 - Position Size:     864 - Value 999510.21  
+0022 - 2005-02-02 - data value 30706.56  
+0022 - 2005-02-02 - Order Target Value: 29000.00  
+0023 - 2005-02-03 - Position Size:     816 - Value 999130.05  
+0023 - 2005-02-03 - data value 28633.44  
+0023 - 2005-02-03 - Order Target Value: 28000.00  
+...  
+
+order_target_percent #  
+
+此方法仅计算当前投资组合价值的百分比：  
+
+Bash  
+$ ./order_target.py --target-percent --plot  
+0001 - 2005-01-03 - Position Size:     00 - Value 1000000.00  
+0001 - 2005-01-03 - data percent 0.00  
+0001 - 2005-01-03 - Order Target Percent: 0.03  
+0002 - 2005-01-04 - Position Size:     785 - Value 998532.05  
+0002 - 2005-01-04 - data percent 0.03  
+0002 - 2005-01-04 - Order Target Percent: 0.04  
+0003 - 2005-01-05 - Position Size:     1091 - Value 998007.44  
+
+  
+﻿  
+
+0003 - 2005-01-05 - data percent 0.04  
+0003 - 2005-01-05 - Order Target Percent: 0.05  
+0004 - 2005-01-06 - Position Size:     1381 - Value 996985.64  
+...  
+0020 - 2005-01-31 - Position Size:     7985 - Value 991966.28  
+0020 - 2005-01-31 - data percent 0.28  
+0020 - 2005-01-31 - Order Target Percent: 0.31  
+0021 - 2005-02-01 - Position Size:     8733 - Value 988008.94  
+0021 - 2005-02-01 - data percent 0.31  
+0021 - 2005-02-01 - Order Target Percent: 0.30  
+0022 - 2005-02-02 - Position Size:     8530 - Value 995005.45  
+0022 - 2005-02-02 - data percent 0.30  
+0022 - 2005-02-02 - Order Target Percent: 0.29  
+0023 - 2005-02-03 - Position Size:     8120 - Value 991240.75  
+0023 - 2005-02-03 - data percent 0.29  
+0023 - 2005-02-03 - Order Target Percent: 0.28  
+...  
+
+示例使用 #  
+
+Bash  
+$ ./order_target.py --help  
+usage: order_target.py [-h] [--data DATA] [--fromdate FROMDATE]                        
+[--todate TODATE] [--cash CASH]                       (--target- 
+size | --target-value | --target-percent)                        [- 
+-plot [kwargs]]  
+Sample for Order Target  
+optional arguments:  
+  -h, --help            show this help message and exit  
+  --data DATA           Specific data to be read in (default:  
+                         ../../datas/yhoo-1996-2015.txt)  -- 
+fromdate FROMDATE   Starting date in YYYY-MM-DD format (default:  
+                        2005-01-01)  --todate TODATE       Ending  
+date in YYYY-MM-DD format (default: 2006-12-31)  --cash CASH            
+Ending date in YYYY-MM-DD format (default: 1000000)  --target-size          
+Use order_target_size (default: False)  --target-value        Use  
+order_target_value (default: False)  --target-percent      Use  
+order_target_percent (default: False)  --plot [kwargs], -p  
+[kwargs]                        Plot the read data applying any  
+kwargs passed For  
+                        example: --plot style="candle" (to plot  
+candles)                        (default: None)  
+
+  
+﻿  
+
+Order-OCO 订单   
+
+使用模式尽量保持简单。因此，如果策略中的逻辑决定是时候发布订单，可以像这样 
+
+使用 OCO ：  
+
+Python  
+def next(self):  
+     ...    o1 = self.buy(...)  
+     ...    o2 = self.buy(..., oco=o1)  
+     ...    o3 = self.buy(..., oco=o1)  # 甚至可以是 oco=o2，o2 已经在 
+
+o1 组中  
+
+很简单，第一个订单 o1 将成为组长。通过指定 oco 命名参数，o2 和 o3 成为 OCO 组 
+
+的一部分。请注意，代码注释指出 o3 也可以通过指定 o2 成为组的一部分（o2 已经是 
+
+组的一部分）。  
+
+一旦成功组成组后，如果组中的任何订单被执行、取消或过期，其他订单将被取消。  
+
+下面的示例展示了 OCO 概念。一个标准执行并绘图：  
+
+Bash  
+$ ./oco.py --broker cash=50000 --plot  
+
+注意  
+
+现金增加到 50000 ，因为资产价值达到 4000 ，3 个订单的 1 个项目至少需要 12000 货 
+
+币单位（经纪商默认值为 10000）。  
+
+以下图表实际上没有提供太多信息（这是一个标准的 SMA 交叉策略）。  
+
+示例执行，当快速 SMA 上穿慢速 SMA 时，发布 3 个订单。  
+
+•   order1 是一个限价订单，在 limdays 天后到期，限价为收盘价减少一个百分比。  
+
+•   order2 是一个期限更长、限价更低的限价订单。  
+
+•   order3 是一个限价更低的限价订单。  
+
+因此，order2 和 order3 不会执行，因为：  
+
+•   order1 将首先执行，这将触发其他订单的取消。  
+
+•   或者 order1 将过期，这将触发其他订单的取消。  
+
+系统保存了 3 个订单的 ref 标识符，并且只有在 notify_order 中看到三个 ref 标识符分 
+
+别为 Completed 、Cancelled 、Margin 或 Expired 时，才会发布新买单。  
+
+退出是在持有一段时间后后简单完成的。  
+
+为了跟踪实际执行，生成文本输出。部分内容如下：  
+
+  
+﻿  
+
+Plaintext  
+2005-01-28: Oref 1 / Buy at 2941.11055  
+2005-01-28: Oref 2 / Buy at 2896.7722  
+2005-01-28: Oref 3 / Buy at 2822.87495  
+2005-01-31: Order ref: 1 / Type Buy / Status Submitted  
+2005-01-31: Order ref: 2 / Type Buy / Status Submitted  
+2005-01-31: Order ref: 3 / Type Buy / Status Submitted  
+2005-01-31: Order ref: 1 / Type Buy / Status Accepted  
+2005-01-31: Order ref: 2 / Type Buy / Status Accepted  
+2005-01-31: Order ref: 3 / Type Buy / Status Accepted  
+2005-02-01: Order ref: 1 / Type Buy / Status Expired  
+2005-02-01: Order ref: 3 / Type Buy / Status Canceled  
+2005-02-01: Order ref: 2 / Type Buy / Status Canceled  
+...  
+2006-06-23: Oref 49 / Buy at 3532.39925  
+2006-06-23: Oref 50 / Buy at 3479.147  
+2006-06-23: Oref 51 / Buy at 3390.39325  
+2006-06-26: Order ref: 49 / Type Buy / Status Submitted  
+2006-06-26: Order ref: 50 / Type Buy / Status Submitted  
+2006-06-26: Order ref: 51 / Type Buy / Status Submitted  
+2006-06-26: Order ref: 49 / Type Buy / Status Accepted  
+2006-06-26: Order ref: 50 / Type Buy / Status Accepted  
+2006-06-26: Order ref: 51 / Type Buy / Status Accepted  
+2006-06-26: Order ref: 49 / Type Buy / Status Completed  
+2006-06-26: Order ref: 51 / Type Buy / Status Canceled  
+2006-06-26: Order ref: 50 / Type Buy / Status Canceled  
+...  
+2006-11-10: Order ref: 61 / Type Buy / Status Canceled  
+2006-12-11: Oref 63 / Buy at 4032.62555  
+2006-12-11: Oref 64 / Buy at 3971.8322  
+2006-12-11: Oref 65 / Buy at 3870.50995  
+2006-12-12: Order ref: 63 / Type Buy / Status Submitted  
+2006-12-12: Order ref: 64 / Type Buy / Status Submitted  
+2006-12-12: Order ref: 65 / Type Buy / Status Submitted  
+2006-12-12: Order ref: 63 / Type Buy / Status Accepted  
+2006-12-12: Order ref: 64 / Type Buy / Status Accepted  
+2006-12-12: Order ref: 65 / Type Buy / Status Accepted  
+2006-12-15: Order ref: 63 / Type Buy / Status Expired  
+2006-12-15: Order ref: 65 / Type Buy / Status Canceled  
+2006-12-15: Order ref: 64 / Type Buy / Status Canceled  
+
+以下情况发生：  
+
+•   第一批订单发布。订单 1 到期，订单 2 和 3 被取消。预期结果。  
+
+  
+﻿  
+
+•   几个月后发布另一批 3 个订单。在这种情况下，订单 49 完成，订单 50 和 51 立即 
+
+取消。  
+
+•   最后一批订单与第一批订单相同。  
+
+现在检查不使用 OCO 的行为：  
+
+Bash  
+$ ./oco.py --strat do_oco=False --broker cash=500002005-01-28:  
+Oref 1 / Buy at 2941.11055  
+2005-01-28: Oref 2 / Buy at 2896.7722  
+2005-01-28: Oref 3 / Buy at 2822.87495  
+2005-01-31: Order ref: 1 / Type Buy / Status Submitted  
+2005-01-31: Order ref: 2 / Type Buy / Status Submitted  
+2005-01-31: Order ref: 3 / Type Buy / Status Submitted  
+2005-01-31: Order ref: 1 / Type Buy / Status Accepted  
+2005-01-31: Order ref: 2 / Type Buy / Status Accepted  
+2005-01-31: Order ref: 3 / Type Buy / Status Accepted  
+2005-02-01: Order ref: 1 / Type Buy / Status Expired  
+
+结果不多（没有订单执行，图表也没有太多需求）。  
+
+发布了一批订单。  
+
+订单 1 过期，但因为策略参数 do_oco =False ，订单 2 和 3 未加入 OCO 组，因此订单 
+
+2 和 3 未被取消，由于默认到期时间为 1000 天，样本可用数据（2 年数据）内它们永 
+
+不过期。  
+
+系统从未发布第二批订单。  
+
+示例使用 #  
+
+Bash  
+$ ./oco.py --help  
+usage: oco.py [-h] [--data0 DATA0] [--fromdate FROMDATE] [--todate  
+TODATE]              [--cerebro kwargs] [--broker kwargs] [--sizer  
+kwargs]              [--strat kwargs] [--plot [kwargs]]  
+Sample Skeleton  
+optional arguments:  
+  -h, --help           show this help message and exit  
+  --data0 DATA0        Data to read in (default:  
+                        ../../datas/2005-2006-day-001.txt)  -- 
+fromdate FROMDATE  Date[time] in YYYY-MM-DD[THH:MM:SS] format  
+(default: )  --todate TODATE      Date[time] in YYYY-MM- 
+DD[THH:MM:SS] format (default: )  --cerebro kwargs     kwargs in  
+key=value format (default: )  --broker kwargs      kwargs in  
+
+  
+﻿  
+
+key=value format (default: )  --sizer kwargs       kwargs in  
+key=value format (default: )  --strat kwargs       kwargs in  
+key=value format (default: )  --plot [kwargs]      kwargs in  
+key=value format (default: )  
+
+示例代码 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class St(bt.Strategy):  
+    params = dict(  
+        ma=bt.ind.SMA,  
+        p1=5,  
+        p2=15,  
+        limit=0.005,  
+        limdays=3,  
+        limdays2=1000,  
+        hold=10,  
+        switchp1p2=False,  # switch prices of order1 and order2         
+oco1oco2=False,  
+  # False - use order1 as oco for order3, else order2         
+do_oco=True,  # use oco or not    )  
+    def notify_order(self, order):  
+        print('{}: Order ref: {} / Type {} / Status {}'.format(  
+            self.data.datetime.date(0),  
+            order.ref, 'Buy' * order.isbuy() or  'Sell',  
+            order.getstatusname()))  
+        if order.status == order.Completed:  
+            self.holdstart = len(self)  
+        if not order.alive() and order.ref in self.orefs:  
+            self.orefs.remove(order.ref)  
+    def __init__(self):  
+        ma1, ma2 = self.p.ma(period=self.p.p1),  
+self.p.ma(period=self.p.p2)  
+        self.cross = bt.ind.CrossOver(ma1, ma2)  
+        self.orefs = list()  
+    def next(self):  
+        if self.orefs:  
+            return  # pending orders do nothing  
+
+  
+﻿  
+
+        if not self.position:  
+            if self.cross > 0.0:  # crossing up  
+                p1 = self.data.close[0] * (1.0 - self.p.limit)  
+                p2 = self.data.close[0] * (1.0 - 2 * 2 *  
+self.p.limit)  
+                p3 = self.data.close[0] * (1.0 - 3 * 3 *  
+self.p.limit)  
+                if self.p.switchp1p2:  
+                    p1, p2 = p2, p1  
+                o1 = self.buy(exectype=bt.Order.Limit, price=p1,  
+                               
+valid=datetime.timedelta(self.p.limdays))  
+                print('{}: Oref {} / Buy at {}'.format(  
+                    self.datetime.date(), o1.ref, p1))  
+                oco2 = o1 if self.p.do_oco else None                 
+o2 = self.buy(exectype=bt.Order.Limit, price=p2,  
+                               
+valid=datetime.timedelta(self.p.limdays2),  
+                              oco=oco2)  
+                print('{}: Oref {} / Buy at {}'.format(  
+                    self.datetime.date(), o2.ref, p2))  
+                if self.p.do_oco:  
+                    oco3 = o1 if not self.p.oco1oco2 else oco2  
+                else:  
+                    oco3 = None  
+                o3 = self.buy(exectype=bt.Order.Limit, price=p3,  
+                               
+valid=datetime.timedelta(self.p.limdays2),  
+                              oco=oco3)  
+                print('{}: Oref {} / Buy at {}'.format(  
+                    self.datetime.date(), o3.ref, p3))  
+                self.orefs = [o1.ref, o2.ref, o3.ref]  
+        else:  # in the market            if (len(self) -  
+self.holdstart) >= self.p.hold:  
+                self.close()  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    # Data feed kwargs    kwargs = dict()  
+    # Parse from/to-date    dtfmt, tmfmt =  '%Y-%m-%d', 'T%H:%M:%S'     
+for a, d in ((getattr(args, x), x) for x in ['fromdate',  
+'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+
+  
+﻿  
+
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+    # Data feed    data0 =  
+bt.feeds .BacktraderCSVData(dataname=args.data0, **kwargs)  
+    cerebro.adddata(data0)  
+    # Broker    cerebro.broker =  
+bt.brokers.BackBroker(**eval('dict(' + args.broker +  ')'))  
+    # Sizer    cerebro .addsizer(bt.sizers.FixedSize,  
+**eval('dict(' + args.sizer +  ')'))  
+    # Strategy    cerebro.addstrategy(St, **eval('dict(' +  
+args.strat +  ')'))  
+    # Execute    cerebro.run(**eval('dict(' + args.cerebro +  ')'))  
+    if args.plot:  # Plot if requested to         
+cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=(  
+             'Sample Skeleton'        )  
+    )  
+    parser.add_argument('--data0', default='../../datas/2005-2006- 
+day-001.txt',  
+                        required=False, help='Data to read in')  
+    # Defaults for dates    parser .add_argument('--fromdate',  
+required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--todate', required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--cerebro', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--broker', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--sizer', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--strat', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--plot', required=False, default='',  
+                        nargs='?', const='{}',  
+                        metavar='kwargs', help='kwargs in  
+
+  
+﻿  
+
+key=value format')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+Order-Bracket Orders  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:26:30 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+1.9.37.116 版本增加了    Bracket  订单，为回测经纪商提供了广泛的订单支持（Market、 
+
+Limit、Close 、Stop 、StopLimit、StopTrail、StopTrailLimit、OCO）。  
+
+注意  ，这是为回测和 Interactive Brokers 实现的。  
+
+Bracket 订单不是单个订单，而是由 3 个订单组成。  
+
+以做多为例：  
+
+1.  一个主要的买单，通常设置为 Limit 或 StopLimit 订单。  
+
+2.  一个低价卖单，通常设置为 Stop 订单以限制损失。  
+
+3.  一个高价卖单，通常设置为 Limit 订单以获取利润。  
+
+做空也有对应的卖单和 2 个买单。  
+
+低价/高价卖单实际上形成了一个围绕主要订单的 Bracket。  
+
+为了使其合理，以下规则适用：  
+
+•   3 个订单一起提交，以避免其中任何一个独立触发。  
+
+•   低价/高价卖单被标记为主要订单的子订单。  
+
+•   子订单在主要订单执行之前不活跃。  
+
+•   取消主要订单会取消低价和高价卖单。  
+
+•   执行主要订单会激活低价和高价卖单。  
+
+•   一旦活跃，低价/高价卖单的执行或取消会自动取消另一个订单。  
+
+使用模式 #  
+
+有两种方式创建 Bracket 订单组：  
+
+1.  单次发布 3 个订单。  
+
+  
+﻿  
+
+2.  手动发布 3 个订单。  
+
+单次发布 Bracket #  
+
+backtrader 在 Strategy 中提供了两个新方法来控制 Bracket 订单： buy_bracket 和  
+
+sell_bracket  。  
+
+注意  
+
+签名和信息见下文或 Strategy 参考部分。  
+
+通过单个语句完成 3 个订单的设置。示例如下：  
+
+Python  
+brackets = self.buy_bracket(limitprice=14.00, price=13.50,  
+stopprice=13.00)  
+
+注意， stopprice 和 limitprice  围绕 price 设定。这应该足够了。  
+
+实际的目标数据将是 data0 ，大小将由默认的 sizer 自动确定。当然，可以指定其他参 
+
+数来精细控制执行。  
+
+返回值是一个包含 3 个订单的列表：[主要订单，stop 订单，limit 订单] 。  
+
+因为在发布 sell_bracket 订单时，低价和高价将翻转，所以参数命名遵循约定：  
+
+stop 用于止损（在做多操作中是低价，在做空操作中是高价）， limit 用于获取利润 
+
+ （在做多操作中是高价，在做空操作中是低价）。  
+
+手动发布 Bracket #  
+
+这涉及生成 3 个订单，并处理 transmit 和 parent 参数。规则如下：  
+
+1.  必须首先创建主要订单并设置 transmit=False  。  
+
+2.  低价/高价订单必须有 parent=main_side_order  。  
+
+3.  第一个创建的低价/高价订单必须设置 transmit=False  。  
+
+4.  最后一个创建的订单（无论是低价还是高价）设置 transmit=True  。  
+
+以下示例实现了与上述单次命令相同的效果：  
+
+Python  
+mainside = self.buy(price=13.50, exectype=bt.Order.Limit,  
+transmit=False)  
+lowside  = self.sell(price=13.00, size=mainside.size,  
+exectype=bt.Order.Stop, transmit=False, parent=mainside)  
+highside = self.sell(price=14.00, size=mainside.size,  
+
+  
+﻿  
+
+exectype=bt.Order.Limit, transmit=True, parent=mainside)  
+
+需要做更多的事情：  
+
+•   跟踪主要订单，指示它是其他订单的父订单。  
+
+•   控制 transmit  以确保只有最后一个订单触发联合传输。  
+
+•   指定执行类型。  
+
+•   为低价和高价订单指定大小。  
+
+因为大小必须相同。如果未手动指定大小且用户引入了 sizer ，sizer 可能会为订单指示 
+
+不同的值。因此，需要在调用时手动添加大小。  
+
+示例 #  
+
+运行下面的示例生成如下输出（为简洁起见进行了截断）：  
+
+Bash  
+$ ./bracket.py --plot  
+2005-01-28: Oref 1 / Buy at 2941.11055  
+2005-01-28: Oref 2 / Sell Stop at 2881.99275  
+2005-01-28: Oref 3 / Sell Limit at 3000.22835  
+2005-01-31: Order ref: 1 / Type Buy / Status Submitted  
+2005-01-31: Order ref: 2 / Type Sell / Status Submitted  
+2005-01-31: Order ref: 3 / Type Sell / Status Submitted  
+2005-01-31: Order ref: 1 / Type Buy / Status Accepted  
+2005-01-31: Order ref: 2 / Type Sell / Status Accepted  
+2005-01-31: Order ref: 3 / Type Sell / Status Accepted  
+2005-02-01: Order ref: 1 / Type Buy / Status Expired  
+2005-02-01: Order ref: 2 / Type Sell / Status Canceled  
+2005-02-01: Order ref: 3 / Type Sell / Status Canceled  
+...  
+2005-08-11: Oref 16 / Buy at 3337.3892  
+2005-08-11: Oref 17 / Sell Stop at 3270.306  
+2005-08-11: Oref 18 / Sell Limit at 3404.4724  
+2005-08-12: Order ref: 16 / Type Buy / Status Submitted  
+2005-08-12: Order ref: 17 / Type Sell / Status Submitted  
+2005-08-12: Order ref: 18 / Type Sell / Status Submitted  
+2005-08-12: Order ref: 16 / Type Buy / Status Accepted  
+2005-08-12: Order ref: 17 / Type Sell / Status Accepted  
+2005-08-12: Order ref: 18 / Type Sell / Status Accepted  
+2005-08-12: Order ref: 16 / Type Buy / Status Completed  
+2005-08-18: Order ref: 17 / Type Sell / Status Completed  
+2005-08-18: Order ref: 18 / Type Sell / Status Canceled  
+
+  
+﻿  
+
+...  
+2005-09-26: Oref 22 / Buy at 3383.92535  
+2005-09-26: Oref 23 / Sell Stop at 3315.90675  
+2005-09-26: Oref 24 / Sell Limit at 3451.94395  
+2005-09-27: Order ref: 22 / Type Buy / Status Submitted  
+2005-09-27: Order ref: 23 / Type Sell / Status Submitted  
+2005-09-27: Order ref: 24 / Type Sell / Status Submitted  
+2005-09-27: Order ref: 22 / Type Buy / Status Accepted  
+2005-09-27: Order ref: 23 / Type Sell / Status Accepted  
+2005-09-27: Order ref: 24 / Type Sell / Status Accepted  
+2005-09-27: Order ref: 22 / Type Buy / Status Completed  
+2005-10-04: Order ref: 24 / Type Sell / Status Completed  
+2005-10-04: Order ref: 23 / Type Sell / Status Canceled  
+...  
+
+显示了 3 种不同的结果：  
+
+1.  第一种情况下，主要订单过期，自动取消了其他两个订单。  
+
+2.  第二种情况下，主要订单完成，低价订单（买入情况下的止损）执行，限制了损 
+
+失。  
+
+3.  第三种情况下，主要订单完成，高价订单（限价）执行。  
+
+可以注意到，已完成的订单 id 是 22 和 24 ，高价订单最后发布，未执行的低价订单 id 
+
+是 23 。  
+
+图示  
+
+可以立即看到，亏损交易集中在相同的值附近，而盈利交易也是如此，这是 Bracket  
+
+的目的。控制两侧。  
+
+运行的示例手动发布 3 个订单，但可以使用 buy_bracket  。输出如下：  
+
+Bash  
+$ ./bracket.py --strat usebracket=True  
+
+结果相同。  
+
+参考 #  
+
+请参阅新的 buy_bracket 和  sell_bracket 方法  
+
+Python  
+def buy_bracket(self, data=None, size=None, price=None,  
+plimit=None,  
+                exectype=bt.Order.Limit, valid=None, tradeid=0,  
+
+  
+﻿  
+
+                trailamount=None, trailpercent=None, oargs={},  
+                stopprice=None, stopexec=bt.Order.Stop,  
+stopargs={},  
+                limitprice=None, limitexec=bt.Order.Limit,  
+limitargs={},  
+                **kwargs):  
+     '''  
+    创建一个 Bracket 订单组（低侧 - 买单 - 高侧）。默认行为如下：  
+
+      - 发出执行类型为“Limit”的**买单**  
+
+      - 发出执行类型为“Stop”的*低侧*Bracket**卖单**  
+
+      - 发出执行类型为“Limit”的*高侧*Bracket**卖单**。  
+
+    参见下文以了解不同参数的含义  
+
+      - ``data`` （默认：``None``）  
+
+        订单针对的数据。如果为``None``，则使用系统中的第一个数据，即 
+``self.datas[0  
+]或 self.data0`` （即``self.data``）  
+
+      - ``size`` （默认：``None``）  
+
+        订单的数据单位大小（正数）。  
+
+        如果为``None``，则使用通过``getsizer``检索到的``sizer``实例来 
+
+确定大小。  
+
+        **注意**：相同的大小适用于 Bracket 的所有 3 个订单  
+
+      - ``price`` （默认：``None``）  
+
+        使用的价格（实时经纪商可能会对实际格式施加限制，如果不符合最小价 
+
+格单位要求）  
+
+        ``None``对于``Market``和``Close``订单是有效的（市场决定价格）  
+
+        对于``Limit``、``Stop``和``StopLimit``订单，此值确定触发点 
+
+ （在``Limit``的情况下，触发点显然是订单应匹配的价格）  
+
+      - ``plimit`` （默认：``None``）  
+
+        仅适用于``StopLimit``订单。这是设置隐含限价订单的价格，一旦触 
+
+发了``Stop`` （使用``price``）  
+
+      - ``trailamount`` （默认：``None``）  
+
+        如果订单类型为 StopTrail 或 StopTrailLimit，这是一个绝对金额， 
+
+确定价格的距离（卖单下方和买单上方），以保持追踪止损  
+
+      - ``trailpercent`` （默认：``None``）  
+
+        如果订单类型为 StopTrail 或 StopTrailLimit，这是一个百分比金 
+
+额，确定价格的距离（卖单下方和买单上方），以保持追踪止损（如果也指定了 
+
+``trailamount``，将使用它）  
+
+      - ``exectype`` （默认：``bt.Order.Limit``）  
+
+        可能的值：（参见``buy``方法的文档）  
+
+      - ``valid`` （默认：``None``）  
+
+        可能的值：（参见``buy``方法的文档）  
+
+  
+﻿  
+
+      - ``tradeid`` （默认：``0``）  
+
+        可能的值：（参见``buy``方法的文档）  
+
+      - ``oargs`` （默认：``{}``）  
+
+        要传递给主要订单的特定关键字参数（在``dict``中）。默认 
+
+``**kwargs``中的参数将应用于此。  
+
+      - ``**kwargs``：其他经纪商实现可能支持的额外参数。 
+
+``backtrader``将*kwargs*传递给创建的订单对象  
+
+        可能的值：（参见``buy``方法的文档）  
+
+        **注意**：此``kwargs``将应用于 Bracket 的所有 3 个订单。参见下文 
+
+以了解低侧和高侧订单的特定关键字参数  
+
+      - ``stopprice`` （默认：``None``）  
+
+        *低侧*止损订单的特定价格  
+
+      - ``stopexec`` （默认：``bt.Order.Stop``）  
+
+        *低侧*订单的特定执行类型  
+
+      - ``stopargs`` （默认：``{}``）  
+
+        要传递给低侧订单的特定关键字参数（在``dict``中）。默认 
+
+``**kwargs``中的参数将应用于此。  
+
+      - ``limitprice`` （默认：``None``）  
+
+        *高侧*止损订单的特定价格  
+
+      - ``stopexec`` （默认：``bt.Order.Limit``）  
+
+        *高侧*订单的特定执行类型  
+
+      - ``limitargs`` （默认：``{}``）  
+
+        要传递给高侧订单的特定关键字参数（在``dict``中）。默认 
+
+``**kwargs``中的参数将应用于此。  
+
+    返回：  
+
+      - 一个包含 3 个 Bracket 订单的列表 [订单，低侧，高侧 ]  
+     '''  
+def sell_bracket(self, data=None,  
+                 size=None, price=None, plimit=None,  
+                 exectype=bt.Order.Limit, valid=None, tradeid=0,  
+                 trailamount=None, trailpercent=None,  
+                 oargs={},  
+                 stopprice=None, stopexec=bt.Order.Stop,  
+stopargs={},  
+                 limitprice=None, limitexec=bt.Order.Limit,  
+limitargs={},  
+                 **kwargs):  
+     '''  
+
+    创建一个 Bracket 订单组（低侧 - 卖单 - 高侧）。默认行为如下：  
+
+      - 发出执行类型为“Limit”的**卖单**  
+
+      - 发出执行类型为“Stop”的*高侧*Bracket**买单**  
+
+  
+﻿  
+
+      - 发出执行类型为“Limit”的*低侧*Bracket**买单**。  
+
+    参见``bracket_buy``以了解参数的含义  
+
+    返回：  
+
+      - 一个包含 3 个 Bracket 订单的列表 [订单，低侧，限价侧 ]  
+     '''  
+
+示例用法 #  
+
+Bash  
+$ ./bracket.py --help  
+usage: bracket.py [-h] [--data0 DATA0] [--fromdate FROMDATE] [-- 
+todate TODATE]                  [--cerebro kwargs] [--broker  
+kwargs] [--sizer kwargs]                  [--strat kwargs] [--plot  
+[kwargs]]  
+Sample Skeleton  
+optional arguments:  
+  -h, --help           show this help message and exit  
+  --data0 DATA0        Data to read in (default:  
+                        ../../datas/2005-2006-day-001.txt)  -- 
+fromdate FROMDATE  Date[time] in YYYY-MM-DD[THH:MM:SS] format  
+(default: )  --todate TODATE      Date[time] in YYYY-MM- 
+DD[THH:MM:SS] format (default: )  --cerebro kwargs     kwargs in  
+key=value format (default: )  --broker kwargs      kwargs in  
+key=value format (default: )  --sizer kwargs       kwargs in  
+key=value format (default: )  --strat kwargs       kwargs in  
+key=value format (default: )  --plot [kwargs]      kwargs in  
+key=value format (default: )  
+
+示例代码 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class St(bt.Strategy):  
+    params = dict(  
+        ma=bt.ind.SMA,  
+        p1=5,  
+        p2=15,  
+        limit=0.005,  
+
+  
+﻿  
+
+        limdays=3,  
+        limdays2=1000,  
+        hold=10,  
+        usebracket=False,  # use order_target_size         
+switchp1p2=False,  # switch prices of order1 and order2    )  
+    def notify_order(self, order):  
+        print('{}: Order ref: {} / Type {} / Status {}'.format(  
+            self.data.datetime.date(0),  
+            order.ref, 'Buy' * order.isbuy() or  'Sell',  
+            order.getstatusname()))  
+        if order.status == order.Completed:  
+            self.holdstart = len(self)  
+        if not order.alive() and order.ref in self.orefs:  
+            self.orefs.remove(order.ref)  
+    def __init__(self):  
+        ma1, ma2 = self.p.ma(period=self.p.p1),  
+self.p.ma(period=self.p.p2)  
+        self.cross = bt.ind.CrossOver(ma1, ma2)  
+        self.orefs = list()  
+        if self.p.usebracket:  
+            print('-' * 5, 'Using buy_bracket')  
+    def next(self):  
+        if self.orefs:  
+            return  # pending orders do nothing  
+        if not self.position:  
+            if self.cross > 0.0:  # crossing up                 
+close = self.data.close[0]  
+                p1 = close * (1.0 - self.p.limit)  
+                p2 = p1 - 0.02 * close  
+                p3 = p1 + 0.02 * close  
+                valid1 = datetime.timedelta(self.p.limdays)  
+                valid2 = valid3 =  
+datetime.timedelta(self.p.limdays2)  
+                if self.p.switchp1p2:  
+                    p1, p2 = p2, p1  
+                    valid1, valid2 = valid2, valid1  
+                if not self.p.usebracket:  
+                    o1 = self.buy(exectype=bt.Order.Limit,  
+price=p1, valid=valid1, transmit=False)  
+                    print('{}: Oref {} / Buy at  
+{}'.format(self .datetime.date(), o1.ref, p1))  
+                    o2 = self.sell(exectype=bt.Order.Stop,  
+price=p2, valid=valid2, parent=o1, transmit=False)  
+                    print('{}: Oref {} / Sell Stop at  
+
+  
+﻿  
+
+{}'.format(self .datetime.date(), o2.ref, p2))  
+                    o3 = self.sell(exectype=bt.Order.Limit,  
+price=p3, valid=valid3, parent=o1, transmit=True)  
+                    print('{}: Oref {} / Sell Limit at  
+{}'.format(self .datetime.date(), o3.ref, p3))  
+                    self.orefs = [o1.ref, o2.ref, o3.ref]  
+                else:  
+                    os = self.buy_bracket(price=p1, valid=valid1,  
+stopprice=p2, stopargs=dict(valid=valid2),  
+                                          limitprice=p3,  
+limitargs=dict(valid=valid3),)  
+                    self.orefs = [o.ref for o in os]  
+        else:  # in the market            if (len(self) -  
+self.holdstart) >= self.p.hold:  
+                pass  # do nothing in this case  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    # Data feed kwargs    kwargs = dict()  
+    dtfmt, tmfmt  
+ =  '%Y-%m-%d', 'T%H:%M:%S'    for a, d in ((getattr(args, x), x)  
+for x in ['fromdate', 'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+    data0 = bt.feeds .BacktraderCSVData(dataname=args.data0,  
+**kwargs)  
+    cerebro.adddata(data0)  
+    cerebro.broker = bt.brokers.BackBroker(**eval('dict(' +  
+args.broker +  ')'))  
+    cerebro.addsizer(bt.sizers.FixedSize, **eval('dict(' +  
+args.sizer +  ')'))  
+    cerebro.addstrategy(St, **eval('dict(' + args.strat +  ')'))  
+    cerebro.run()  
+    if args.plot:  
+        cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description='Sample Skeleton'    )  
+    parser.add_argument('--data0', default='../../datas/2005-2006- 
+day-001.txt',  
+                        required=False, help='Data to read in')  
+    parser.add_argument('--fromdate', required=False, default='',  
+
+  
+﻿  
+
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--todate', required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--cerebro', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--broker', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--sizer', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--strat', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--plot', required=False, default='',  
+                        nargs='?', const='{}',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+Order-期货和现货补偿  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:51:29 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+版本  1.9.32.116 增加了对社区提出的一个有趣用例的支持：  
+
+•   用期货启动交易，包括实物交割；  
+
+•   使用指标进行分析；  
+
+•   如有必要，通过操作现货价格来平仓，从而有效地取消实物交割，无论是收货还 
+
+是交货（希望能获利）  
+
+•   期货在操作现货价格的当天到期  
+
+这意味着：  
+
+•   平台接收来自两个不同资产的数据点  
+
+  
+﻿  
+
+•   平台必须以某种方式理解这些资产是相关的，并且现货价格的操作将关闭在期货 
+
+上开启的头寸  
+
+•   实际上，期货并未平仓，只是实物交割被补偿了  
+
+利用这种补偿概念，backtrader 增加了一种方式，让用户告知平台一个数据流上的操 
+
+作将对另一个数据流产生补偿效果。使用模式如下：  
+
+Python  
+import backtrader as bt  
+cerebro = bt.Cerebro()  
+data0 = bt.feeds .MyFavouriteDataFeed(dataname='futurename')  
+cerebro.adddata(data0)  
+data1 = bt.feeds .MyFavouriteDataFeed(dataname='spotname')  
+
+data1.compensate(data0)  # 告诉系统 data1 的操作会影响  
+data0cerebro.adddata(data1)  
+...  
+cerebro.run()  
+
+综合示例 #  
+
+一个示例胜过千言万语，所以让我们把所有的部分结合起来。  
+
+•   使用 backtrader 源代码中的一个标准示例数据源。这将是期货数据  
+
+•   通过重新使用相同的数据源并添加一个随机移动价格的过滤器来模拟一个类似但 
+
+不同的价格，从而创建价差。如下简单地实现：  
+
+Python  
+# 更改收盘价的过滤器 def close_changer(data, *args, **kwargs):  
+    data.close[0] += 50.0 * random.randint(-1, 1)  
+    return False  # 数据流长度未变  
+
+在同一轴上绘图会混淆默认包含的 BuyObserver 标记，因此将禁用标准观察者并手动 
+
+重新添加以使用不同的数据标记。  
+
+头寸将随机进入并在  10 天后退出。  
+
+这并不匹配期货到期期限，但这只是为了实现功能，而不是检查交易日历。  
+
+注意  ：  
+
+•   如果要在期货到期日模拟现货价格的执行，需要激活“cheat-on-close” 以确保订单 
+
+在期货到期时执行。这在本示例中不需要，因为到期是随机选择的。  
+
+注意策略：  
+
+  
+﻿  
+
+•   买操作在 data0 上执行  
+
+•   卖操作在 data1 上执行  
+
+Python  
+class St(bt.Strategy):  
+    def __init__(self):  
+
+        bt.obs.BuySell(self.data0, barplot=True)  # 为不同数据添加 
+
+不同标记        BuySellArrows(self.data1, barplot=True)  # 为不同数 
+
+据添加不同标记  
+    def next(self):  
+        if not self.position:  
+            if random.randint(0, 1):  
+                self.buy(data=self.data0)  
+                self.entered = len(self)  
+        else:  # 在市场中            if (len(self) -  
+self.entered) >= 10:  
+                self.sell(data=self.data1)  
+
+执行： #  
+
+Bash  
+$ ./future-spot.py --no-comp  
+
+得到如下图形输出。  
+
+可以看到：  
+
+•   买操作用向上的绿色三角形标记，图例显示它们属于 data0  
+
+•   卖操作用向下箭头标记，图例显示它们属于 data1  
+
+即使在 data0 上打开头寸并在 data1 上平仓，也能实现交易的闭合，达到了避免实物 
+
+交割的效果。  
+
+我们可以想象，如果不进行补偿，同样的逻辑会发生什么。让我们试试：  
+
+Bash  
+$ ./future-spot.py --no-comp  
+
+这会惨败：  
+
+•   逻辑期望 data0 上的头寸通过 data1 的操作平仓，并且只有在市场不在时才在  
+
+data0 上开仓  
+
+•   但是补偿被禁用，data0 上的初始操作（绿色三角形）从未平仓，因此无法发起其 
+
+  
+﻿  
+
+他操作，data1 上的空头头寸开始累积。  
+
+示例用法： #  
+
+Bash  
+$ ./future-spot.py --help  
+usage: future-spot.py [-h] [--no-comp]  
+Compensation example  
+optional arguments:  
+  -h, --help  show this help message and exit  
+  --no-comp  
+
+示例代码： #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import argparse  
+import random  
+import backtrader as bt  
+
+# 更改收盘价的过滤器 def close_changer(data, *args, **kwargs):  
+    data.close[0] += 50.0 * random.randint(-1, 1)  
+    return False  # 数据流长度未变  
+
+# 重写标准标记 class BuySellArrows(bt.observers.BuySell):  
+    plotlines = dict(buy=dict(marker='$\u21E7$', markersize=12.0),  
+                     sell=dict(marker='$\u21E9$',  
+markersize=12.0))  
+class St(bt.Strategy):  
+    def __init__(self):  
+        bt.obs.BuySell(self.data0, barplot=True)  # 为不同数据添加 
+
+不同标记        BuySellArrows(self.data1, barplot=True)  # 为不同数 
+
+据添加不同标记  
+    def next(self):  
+        if not self.position:  
+            if random.randint(0, 1):  
+                self.buy(data=self.data0)  
+                self.entered = len(self)  
+        else:  # 在市场中            if (len(self) -  
+self.entered) >= 10:  
+                self.sell(data=self.data1)  
+def runstrat(args=None):  
+    args = parse_args(args)  
+
+  
+﻿  
+
+    cerebro = bt.Cerebro()  
+    dataname =  '../../datas/2006-day-001.txt'  # 数据源  
+    data0 = bt.feeds .BacktraderCSVData(dataname=dataname,  
+name='data0')  
+    cerebro.adddata(data0)  
+    data1 = bt.feeds .BacktraderCSVData(dataname=dataname,  
+name='data1')  
+    data1.addfilter(close_changer)  
+    if not args.no_comp:  
+        data1.compensate(data0)  
+    data1.plotinfo.plotmaster = data0  
+    cerebro.adddata(data1)  
+
+    cerebro.addstrategy(St)  # 示例策略  
+
+    cerebro.addobserver(bt.obs.Broker)  # 以下两行在 stdstats=False  
+
+时被移除    cerebro.addobserver(bt.obs.Trades)  
+    cerebro.broker.set_coc(True)  
+
+    cerebro.run(stdstats=False)  # 执行     
+
+cerebro.plot(volume=False)  # 绘图  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=('Compensation example'))  
+    parser.add_argument('--no-comp', required=False,  
+action='store_true')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+  
+
+Order-跟踪止损（限价）  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:51:34 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+版本  1.9.35.116 增加了跟踪止损和跟踪止损限价订单执行类型到回测工具中。  
+
+注意  ，这只在回测中实现，尚未在实时经纪商中实现  
+
+注意  ，更新至版本  1.9.36.116。Interactive Brokers 支持跟踪止损、跟踪止损限价和  
+
+OCO。  
+
+OCO 始终将组中的第一个订单指定为参数 oco  
+
+  
+﻿  
+
+跟踪止损限价：经纪商模拟和 IB 经纪商具有相同的行为。指定：price 作为初始止损 
+
+触发价格（也指定 trailamount），然后 plimit 作为初始限价。两者之间的差值将决定  
+
+limitoffset （限价与止损触发价格之间的距离）  
+
+使用模式完全集成到策略实例的标准买、卖和平仓市场操作方法中。需要注意：  
+
+指明所需的执行类型，如 exectype=bt.Order.StopTrail  
+
+以及跟踪价格是否需要用固定距离或百分比距离计算  
+
+固定距离： trailamount=10  
+
+百分比距离： trailpercent=0.02     （即：2%）  
+
+如果通过发出买单进入市场多头，那么带有 StopTrail 和 trailamount  的卖单会这 
+
+样做：  
+
+如果未指定价格，则使用最新的收盘价  
+
+从价格中减去 trailamount  以找到止损（或触发）价格  
+
+经纪商的下一次迭代检查是否触及触发价格  
+
+如果是：订单将以市场执行类型的方式执行  
+
+如果否，使用最新的收盘价重新计算止损价格，并减去 trailamount 距离  
+
+如果新价格上涨，则更新  
+
+如果新价格下跌（或不变），则忽略  
+
+也就是说：跟踪止损价格随着价格上涨而跟随，但如果价格开始下跌则保持不变，以 
+
+潜在地确保利润。  
+
+如果进入市场时发出的是卖单，那么发出带  StopTrail  的买单会执行相反的操作，即： 
+
+价格会向下跟随。  
+
+一些使用模式  
+
+Python  
+# 对于向下的跟踪止损# 将使用最后价格作为参考 self.buy(size=1,  
+exectype=bt.Order.StopTrail, trailamount=0.25)  
+# 或 self.buy(size=1, exectype=bt.Order.StopTrail, price=10.50,  
+trailamount=0.25)  
+
+# 对于向上的跟踪止损# 将使用最后价格作为参考 self.sell(size=1,  
+exectype=bt.Order.StopTrail, trailamount=0.25)  
+
+# 或 self.sell(size=1, exectype=bt.Order.StopTrail, price=10.50,  
+trailamount=0.25)  
+
+也可以指定 trailpercent 而不是 trailamount  ，并将距离价格的距离计算为价格 
+
+的百分比  
+
+  
+﻿  
+
+Python  
+# 对于 2% 距离的向下跟踪止损# 将使用最后价格作为参考 self.buy(size=1,  
+exectype=bt.Order.StopTrail, trailpercent=0.02)  
+# 或 self.buy(size=1, exectype=bt.Order.StopTrail, price=10.50,  
+trailpercent=0.02)  
+# 对于 2% 距离的向上跟踪止损# 将使用最后价格作为参考 self.sell(size=1,  
+exectype=bt.Order.StopTrail, trailpercent=0.02)  
+# 或 self.sell(size=1, exectype=bt.Order.StopTrail, price=10.50,  
+trailpercent=0.02)  
+
+对于跟踪止损限价  
+
+唯一的区别在于触发跟踪止损价格时发生的事情。  
+
+在这种情况下，订单作为限价订单执行（与 StopLimit 订单具有相同的行为，但此时 
+
+触发价格是动态的）  
+
+注意  ：必须指定 plimit=x.x 来买入或卖出，这将是限价  
+
+注意  ：限价不会像止损/触发价格那样动态变化  
+
+示例总是胜过千言万语，因此这里有一个 backtrader 的常规示例，它  
+
+•   使用均线向上交叉进入市场多头  
+
+•   使用跟踪止损退出市场  
+
+执行时固定价格距离为 50 点  
+
+Bash  
+$ ./trail.py --plot --strat trailamount=50.0  
+
+以及以下输出：  
+
+Plaintext  
+**************************************************  
+2005-02-14,3075.76,3025.76,3025.76  
+----------  
+2005-02-15,3086.95,3036.95,3036.95  
+2005-02-16,3068.55,3036.95,3018.55  
+2005-02-17,3067.34,3036.95,3017.34  
+2005-02-18,3072.04,3036.95,3022.04  
+2005-02-21,3063.64,3036.95,3013.64  
+...  
+...  
+**************************************************  
+2005-05-19,3051.79,3001.79,3001.79  
+
+  
+﻿  
+
+----------  
+2005-05-20,3050.45,3001.79,3000.45  
+2005-05-23,3070.98,3020.98,3020.98  
+2005-05-24,3066.55,3020.98,3016.55  
+2005-05-25,3059.84,3020.98,3009.84  
+2005-05-26,3086.08,3036.08,3036.08  
+2005-05-27,3084.0,3036.08,3034.0  
+2005-05-30,3096.54,3046.54,3046.54  
+2005-05-31,3076.75,3046.54,3026.75  
+2005-06-01,3125.88,3075.88,3075.88  
+2005-06-02,3131.03,3081.03,3081.03  
+2005-06-03,3114.27,3081.03,3064.27  
+2005-06-06,3099.2,3081.03,3049.2  
+2005-06-07,3134.82,3084.82,3084.82  
+2005-06-08,3125.59,3084.82,3075.59  
+2005-06-09,3122.93,3084.82,3072.93  
+2005-06-10,3143.85,3093.85,3093.85  
+2005-06-13,3159.83,3109.83,3109.83  
+2005-06-14,3162.86,3112.86,3112.86  
+2005-06-15,3147.55,3112.86,3097.55  
+2005-06-16,3160.09,3112.86,3110.09  
+2005-06-17,3178.48,3128.48,3128.48  
+2005-06-20,3162.14,3128.48,3112.14  
+2005-06-21,3179.62,3129.62,3129.62  
+2005-06-22,3182.08,3132.08,3132.08  
+2005-06-23,3190.8,3140.8,3140.8  
+2005-06-24,3161.0,3140.8,3111.0  
+...  
+...  
+...  
+**************************************************  
+2006-12-19,4100.48,4050.48,4050.48  
+----------  
+2006-12-20,4118.54,4068.54,4068.54  
+2006-12-21,4112.1,4068.54,4062.1  
+2006-12-22,4073.5,4068.54,4023.5  
+2006-12-27,4134.86,4084.86,4084.86  
+2006-12-28,4130.66,4084.86,4080.66  
+2006-12-29,4119.94,4084.86,4069.94  
+
+而不是等待通常的向下交叉模式，系统使用跟踪止损退出市场。让我们看看第一个操 
+
+作，例如：  
+
+•   进入多头时的收盘价：3075.76  
+
+  
+﻿  
+
+•   系统计算的跟踪止损价格：3025.76                  （距离为 50 个单位）  
+
+•   示例计算的跟踪止损价格：3025.76                  （每行显示的最后一个价格）  
+
+在第一次计算之后：  
+
+•   收盘价上涨到 3086.95 ，止损价格调整为 3036.95  
+
+•    随后的收盘价没有超过 3086.95 ，触发价格不变  
+
+其他两个操作  
+
+中可以看到相同的模式。  
+
+为了比较，执行时固定距离为 30 点（仅图表）  
+
+Bash  
+$ ./trail.py --plot --strat trailamount=30.0  
+
+图表如下：  
+
+  
+
+  
+
+  
+
+最后一次执行 trailpercent=0.02  
+
+Bash  
+$ ./trail.py --plot --strat trailpercent=0.02  
+
+示例用法 #  
+
+Bash  
+$ ./trail.py --help  
+usage: trail.py [-h] [--data0 DATA0] [--fromdate FROMDATE] [-- 
+todate TODATE]                [--cerebro kwargs] [--broker kwargs]  
+[--sizer kwargs]                [--strat kwargs] [--plot [kwargs]]  
+StopTrail Sample  
+optional arguments:  
+  -h, --help           show this help message and exit  
+  --data0 DATA0        Data to read in (default:  
+                        ../../datas/2005-2006-day-001.txt)  -- 
+fromdate FROMDATE  Date[time] in YYYY-MM-DD[THH:MM:SS] format  
+(default: )  --todate TODATE      Date[time] in YYYY-MM- 
+DD[THH:MM:SS] format (default: )  --cerebro kwargs     kwargs in  
+key=value format (default: )  --broker kwargs      kwargs in  
+
+  
+﻿  
+
+key=value format (default: )  --sizer kwargs       kwargs in  
+key=value format (default: )  --strat kwargs       kwargs in  
+key=value format (default: )  --plot [kwargs]      kwargs in  
+key=value format (default: )  
+
+示例代码 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class St(bt.Strategy):  
+    params = dict(  
+        ma=bt.ind.SMA,  
+        p1=10,  
+        p2=30,  
+        stoptype=bt.Order.StopTrail,  
+        trailamount=0.0,  
+        trailpercent=0.0,  
+    )  
+    def __init__(self):  
+        ma1, ma2 = self.p.ma(period=self.p.p1),  
+self.p.ma(period=self.p.p2)  
+        self.crup = bt.ind.CrossUp(ma1, ma2)  
+        self.order = None  
+    def next(self):  
+        if not self.position:  
+            if self.crup:  
+                o = self.buy()  
+                self.order = None                print( '*' * 50)  
+        elif self.order is None:  
+            self.order = self.sell(exectype=self.p.stoptype,  
+                                   trailamount=self.p.trailamount,  
+                                    
+trailpercent=self.p.trailpercent)  
+            if self.p.trailamount:  
+                tcheck = self.data.close - self.p.trailamount  
+            else:  
+                tcheck = self.data.close * (1.0 -  
+self.p.trailpercent)  
+            print(','.join(  
+
+  
+﻿  
+
+                map(str, [self.datetime.date(),  
+self.data.close[0],  
+                          self.order.created.price, tcheck])  
+                )  
+            )  
+            print('-' * 10)  
+        else:  
+            if self.p.trailamount:  
+                tcheck = self.data.close - self.p.trailamount  
+            else:  
+                tcheck = self.data.close * (1.0 -  
+self.p.trailpercent)  
+            print(','.join(  
+                map(str, [self.datetime.date(),  
+self.data.close[0],  
+                          self.order.created.price, tcheck])  
+                )  
+            )  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    # Data feed kwargs    kwargs = dict()  
+    # Parse from/to-date    dtfmt, tmfmt =  '%Y-%m-%d', 'T%H:%M:%S'     
+for a, d in ((getattr(args, x), x) for x in ['fromdate',  
+'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+    # Data feed    data0 =  
+bt.feeds .BacktraderCSVData(dataname=args.data0, **kwargs)  
+    cerebro.adddata(data0)  
+    # Broker    cerebro.broker =  
+bt.brokers.BackBroker(**eval('dict(' + args.broker +  ')'))  
+    # Sizer    cerebro .addsizer(bt.sizers.FixedSize,  
+**eval('dict(' + args.sizer +  ')'))  
+    # Strategy    cerebro.addstrategy(St, **eval('dict(' +  
+args.strat +  ')'))  
+    # Execute    cerebro.run(**eval('dict(' + args.cerebro +  ')'))  
+    if args.plot:  # Plot if requested to         
+cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=(  
+
+  

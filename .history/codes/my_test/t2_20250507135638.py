@@ -1,0 +1,17 @@
+
+plotinfo = dict(plot=True,
+                subplot=True,
+                plotname='',
+                plotskip=False,
+                plotabove=False,
+                plotlinelabels=False,
+                plotlinevalues=True,
+                plotvaluetags=True,
+                plotymargin=0.0,
+                plotyhlines=[],
+                plotyticks=[],
+                plothlines=[],
+                plotforce=False,
+                plotmaster=None,
+                plotylimited=True,
+           )

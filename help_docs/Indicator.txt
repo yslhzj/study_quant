@@ -1,0 +1,1378 @@
+﻿  
+
+if __name__ ==  '__main__':  
+    runstrat()  
+
+Indicator-使用指标  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:27:38 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+指标可以在平台中的两个地方使用：  
+
+•   策略内部  
+
+•   其他指标内部  
+
+指标在操作中的使用 #  
+
+在策略中，指标总是在 __init__  中实例化。在  next  中使用/检查指标值（或派生值）。 
+
+有一个重要的公理需要考虑：在 __init__  中声明的任何指标（或派生值）将在调用  
+
+next 之前预先计算。  
+
+让我们了解操作模式的差异。  
+
+__init__ vs next #  
+
+在 __init__  中涉及到线条对象的任何操作都会生成另一个线条对象。在 next  中涉及 
+
+到线条对象的任何操作都会生成常规的 Python 类型，如浮点数和布尔值。  
+
+如 __init__  中的一个操作：  
+
+Python  
+hilo_diff = self.data.high - self.data.low  
+
+变量 hilo_diff 持有一个线条对象的引用，该对象在调用 next 之前预先计算，可以 
+
+使用标准数组表示法  [] 访问。  
+
+它显然包含了数据源中每个条的高低差值。  
+
+这在混合简单线条（如  self.data  数据源中的线条）和复杂线条（如指标）时也有效：  
+
+Python  
+sma = bt.SimpleMovingAverage(self.data.close)  
+close_sma_diff = self.data.close - sma  
+
+  
+﻿  
+
+现在 close_sma_diff 再次包含一个线条对象。  
+
+使用逻辑运算符：  
+
+Python  
+close_over_sma = self.data.close > sma  
+
+现在生成的线条对象将包含一个布尔数组。  
+
+在 next  中，一个操作（逻辑运算符）：  
+
+Python  
+close_over_sma = self.data.close > self.sma  
+
+使用等效数组（基于索引 0 的表示法）：  
+
+Python  
+close_over_sma = self.data.close[0] > self.sma[0]  
+
+在这种情况下， close_over_sma 生成一个布尔值，这是比较两个浮点值的结果，这 
+
+些值由应用于 self.data.close 和  self.sma  的  [0] 运算符返回。  
+
+为什么选择 __init__ vs next #  
+
+逻辑简化（以及易用性）是关键。可以在 __init__  中声明计算和大部分相关逻辑， 
+
+将实际操作逻辑保持在 next  中的最小化。  
+
+实际上还有一个附带好处：速度（由于开始时的预计算）。  
+
+一个完整的示例，在 __init__  中生成一个买入信号：  
+
+Python  
+class MyStrategy(bt.Strategy):  
+    def __init__(self):  
+        sma1 = btind.SimpleMovingAverage(self.data)  
+        ema1 = btind.ExponentialMovingAverage()  
+        close_over_sma = self.data.close > sma1  
+        close_over_ema = self.data.close > ema1  
+        sma_ema_diff = sma1 - ema1  
+        buy_sig = bt.And(close_over_sma, close_over_ema,  
+sma_ema_diff > 0)  
+    def next(self):  
+        if buy_sig:  
+            self.buy()  
+
+注意： Python 的 and 运算符无法被重载，迫使平台定义其自己的 And  。同样适用于 
+
+  
+﻿  
+
+其他构造如 Or 和  If  。  
+
+显然，“声明式”方法在 __init__ 期间保持 next           （实际策略工作发生的地方）的膨胀 
+
+最小化。不要忘记，这也有一个加速因素。  
+
+注意：  当逻辑变得非常复杂并涉及多个操作时，通常最好将其封装在一个指标内。  
+
+一些注意事项 #  
+
+在上述示例中，与其他平台相比，backtrader 已简化了两件事：  
+
+声明的指标既不获取父参数（如它们被创建的策略），也没有调用任何类型的“注册”方 
+
+法/ 函数。尽管如此，策略会触发指标和任何因操作生成的线条对象的计算（如 sma -  
+
+ema ）。  
+
+ExponentialMovingAverage 实例化时没有传入 self.data  。这是故意的。如果没 
+
+有传入数据，父（在本例中是创建它的策略）的第一个数据将在后台自动传递。  
+
+指标绘图 #  
+
+首先也是最重要的：声明的指标会自动绘制（如果调用了 cerebro.plot ）。操作生成 
+
+的线条对象不会绘制（如 close_over_sma = self.data.close > self.sma ）。  
+
+有一个辅助的  LinePlotterIndicator 可以绘制这些操作，如果需要可以使用以下方 
+
+法：  
+
+Python  
+close_over_sma = self.data.close > self.sma  
+LinePlotterIndicator(close_over_sma, name='Close_over_SMA')  
+
+name 参数为此指标持有的单行命名。  
+
+控制绘图 #  
+
+在开发指标期间，可以添加一个 plotinfo 声明。它可以是一个包含两元素的元组的 
+
+元组、一个字典或一个有序字典。看起来像这样：  
+
+Python  
+class MyIndicator(bt.Indicator):  
+     ...    plotinfo = dict(subplot=False)  
+     ...  
+
+稍后可以访问（并设置）该值（如果需要）：  
+
+Python  
+
+  
+﻿  
+
+myind = MyIndicator(self.data, someparam=value)  
+myind.plotinfo.subplot = True  
+
+甚至可以在实例化期间设置该值：  
+
+Python  
+myind = MyIndicator(self.data, someparams=value, subplot=True)  
+
+subplot=True 将传递给指标的（在幕后实例化的）成员变量 plotinfo  。  
+
+plotinfo 提供以下参数来控制绘图行为：  
+
+参数名                    默认值                     描述  
+
+plot                   True                    是否绘制指标。  
+
+subplot                True                    是否在不同窗口中绘制指 
+
+                                               标。对于移动平均线等指 
+
+                                               标，默认值更改为  
+
+                                               False。  
+
+plotname               ''                      设置绘图中显示的名称。 
+
+                                               空值表示将使用指标的规 
+
+                                               范名称（class. name ）。 
+
+                                               这有一些限制，因为  
+
+                                               Python 标识符不能使用算 
+
+                                               术运算符等。例如，指标  
+
+                                               DI+ 将声明如下：  
+
+                                               plotinfo =  
+                                               dict(plotname='DI+')  
+                                               。  
+
+plotabove              False                   指标通常绘制在其操作的 
+
+                                               数据下方。将其设置为  
+
+                                               True 会使指标绘制在数据 
+
+                                               上方。  
+
+plotlinelabels         False                   适用于“指标”上的“指标”。 
+
+                                               如果计算 RSI 的简单移动 
+
+                                               平均线，绘图通常会显示 
+
+                                               “SimpleMovingAverage” 
+
+  
+﻿  
+
+                                           的名称。这是“指标”的名 
+
+                                          称，而不是实际绘制的线 
+
+                                          条的名称。如果将值设置 
+
+                                           为 True ，将使用简单移动 
+
+                                          平均线内线条的实际名 
+
+                                          称。  
+
+plotymargin          0.0                  在指标顶部和底部留出的 
+
+                                          边距量（0.15 -> 15%）。 
+
+                                          有时 matplotlib 绘图会超 
+
+                                           出轴的顶部/底部，可能需 
+
+                                          要一个边距。  
+
+plotyticks           []                    用于控制绘制的 y 轴刻 
+
+                                          度。如果传递一个空列 
+
+                                          表，将自动计算“y 刻度”。 
+
+                                          对于像随机指标这样的东 
+
+                                          西，设置为已知的行业标 
+
+                                          准可能有意义：[20.0,  
+
+                                          50.0, 80.0]。某些指标提 
+
+                                          供 upperband 和  
+
+                                           lowerband 等参数，实际 
+
+                                           上用于操纵 y 刻度。  
+
+plothlines           []                    用于控制沿指标轴绘制的 
+
+                                          水平线。如果传递一个空 
+
+                                          列表，则不会绘制水平 
+
+                                          线。对于像随机指标这样 
+
+                                           的东西，绘制已知的行业 
+
+                                          标准线可能有意义： 
+
+                                           [20.0, 80.0]。某些指标提 
+
+                                          供 upperband 和  
+
+                                           lowerband 等参数，实际 
+
+                                           上用于操纵水平线。  
+
+plotyhlines          []                    用于同时控制  
+
+                                           plotyticks 和  
+
+                                           plothlines  ，使用一个 
+
+  
+﻿  
+
+                                         单一参数。  
+
+plotforce            False               如果由于某种原因您认为 
+
+                                         某个指标应该绘制但未绘 
+
+                                         制……请最后设置为  
+
+                                         True 。  
+
+Indicator-指标开发  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:27:43 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+如果需要开发任何内容（除了一个或多个获胜策略），这个内容就是自定义指标。在平 
+
+台内开发此类内容很容易。  
+
+开发要点：  
+
+•  从 Indicator 类（直接或从现有子类）派生一个类；  
+
+•  定义它将包含的  Line  ；  
+
+•  一个指标至少要有一条线。如果从现有的类派生，线条可能已经定义好了  
+
+•  可选地定义可以改变行为的参数  
+
+•  可选地提供/ 自定义一些用于合理绘制指标的元素  
+
+•  在 __init__  中提供一个完全定义的操作，并绑定（分配）到指标的线条，或者 
+
+提供 next 方法和（可选的） once 方法  
+
+如果一个指标可以在初始化期间通过逻辑/算术操作完全定义，且结果分配给线条：完 
+
+成。如果情况不是这样，至少要提供一个 next 方法，其中指标必须在索引 0 处分配 
+
+一个值给线条。可以通过提供  once  方法来优化运行一次模式（批处理操作）的计算。  
+
+重要说明：幂等性 #  
+
+指标为每个接收到的条生成一个输出。不能假设同一个条会被发送多少次。操作必须 
+
+是幂等的。  
+
+其背后的理由：  
+
+•  同一个条（索引-wise ）可以多次发送，并且值会变化（即变化的值是收盘价）  
+
+•  这使得可以“重放”一个日内会话，但使用由 5 分钟条组成的日内数据。  
+
+  
+﻿  
+
+这也允许平台从实时数据源获取值。  
+
+一个简单（但功能齐全）的指标 #  
+
+可以这样：  
+
+Python  
+class DummyInd(bt.Indicator):  
+    lines = ('dummyline',)  
+    params = (('value', 5),)  
+    def __init__(self):  
+        self.lines.dummyline = bt.Max(0.0, self .params.value)  
+
+完成！  
+
+该指标将始终输出相同的值：要么是 0.0 ，要么是 self.params.value                   （如果它恰好 
+
+大于 0.0）。  
+
+使用 next 方法的相同指标：  
+
+Python  
+class DummyInd(bt.Indicator):  
+    lines = ('dummyline',)  
+    params = (('value', 5),)  
+    def next(self):  
+        self.lines.dummyline[0] = max(0.0, self.params.value)  
+
+完成！相同行为。  
+
+注意： 请注意在 __init__ 版本中，使用 bt.Max 将值分配给线条对象  
+
+self.lines.dummyline  。 bt.Max 返回一个线条对象，它会为传递给指标的每个条 
+
+自动迭代。如果使用 max  ，赋值将毫无意义，因为指标将有一个固定值的成员变量， 
+
+而不是线条。在 next 期间，直接使用浮点值进行工作，可以使用标准的 max  内置函 
+
+数。  
+
+回顾一下， self.lines.dummyline 是长表示法，可以缩短为：  
+
+甚至可以缩短为：  
+
+只有在代码没有用成员属性遮蔽这个变量时，后者才有可能。  
+
+第三个也是最后一个版本提供了一个额外的 once 方法来优化计算：  
+
+Python  
+class DummyInd(bt.Indicator):  
+    lines = ('dummyline',)  
+    params = (('value', 5),)  
+
+  
+﻿  
+
+    def next(self):  
+        self.lines.dummyline[0] = max(0.0, self.params.value)  
+    def once(self, start, end):  
+        dummy_array = self.lines.dummyline.array  
+        for i in range(start, end):  
+            dummy_array[i] = max(0.0, self.params.value)  
+
+更有效，但开发 once 方法迫使深入研究。实际上，已经深入到内部。  
+
+__init__ 版本无论如何都是最好的：  
+
+•   所有内容都限制在初始化期间  
+
+•   自动提供 next 和 once     （都已优化，因为 bt.Max  已经有它们），无需处理索引 
+
+和/或公式  
+
+如果需要开发，指标也可以覆盖与 next 和 once 相关的方法：  
+
+•   prenext 和 nextstart  
+
+•   preonce 和 oncestart  
+
+手动/ 自动最小周期 #  
+
+如果可能，平台将计算它，但可能需要手动操作。  
+
+以下是一个简单移动平均线的实现：  
+
+Python  
+class SimpleMovingAverage1(Indicator):  
+    lines = ('sma',)  
+    params = (('period', 20),)  
+    def next(self):  
+        datasum = math.fsum(self .data.get(size=self.p.period))  
+        self.lines.sma[0] = datasum / self.p.period  
+
+虽然看起来合理，但平台不知道最小周期是什么，即使参数被命名为“period”                            （名称可 
+
+能具有误导性，一些指标接收多个“period”，它们有不同的用途）。  
+
+在这种情况下，  next  将在第一个条已经进入系统时被调用，并且所有事情都会爆炸， 
+
+因为 get 不能返回所需的 self.p.period  。  
+
+在解决情况前，需要考虑：  
+
+传递给指标的数据源可能已经携带最小周期。示例 SimpleMovingAverage 可以在以 
+
+下情况下进行：  
+
+•   常规数据源：默认最小周期为  1            （只等待进入系统的第一个条）。  
+
+  
+﻿  
+
+•   另一个移动平均线：它已经有一个周期。如果是 20 ，再次我们的示例移动平均线 
+
+也是 20 ，我们最终得到的最小周期是 40 条。  
+
+实际上，内部计算说是 39…… 因为一旦第一个移动平均线生成了一个条，这个条将计 
+
+入下一个移动平均线，这就创建了一个重叠条，因此需要 39。其他指标/对象也携带周 
+
+期。  
+
+缓解情况如下：  
+
+Python  
+class SimpleMovingAverage1(Indicator):  
+    lines = ('sma',)  
+    params = (('period', 20),)  
+    def __init__(self):  
+        self.addminperiod(self.params.period)  
+    def next(self):  
+        datasum = math.fsum(self .data.get(size=self.p.period))  
+        self.lines.sma[0] = datasum / self.p.period  
+
+addminperiod 方法告诉系统考虑该指标所需的额外周期条，无论现有的最小周期是 
+
+什么。有时这完全不需要，如果所有计算都使用已经向系统传达其周期需求的对象。  
+
+一个快速的 MACD 实现带有直方图：  
+
+Python  
+from backtrader.indicators import EMA  
+class MACD(Indicator):  
+    lines = ('macd', 'signal', 'histo',)  
+    params = (('period_me1', 12), ('period_me2', 26),  
+('period_signal', 9),)  
+    def __init__(self):  
+        me1 = EMA(self.data, period=self.p.period_me1)  
+        me2 = EMA(self.data, period=self.p.period_me2)  
+        self.l.macd = me1 - me2  
+        self.l.signal = EMA(self.l.macd,  
+period=self.p.period_signal)  
+        self.l.histo = self.l.macd - self.l.signal  
+
+完成！无需考虑最小周期。  
+
+EMA 代表指数移动平均线（平台内置别名），这个（已经在平台中）已经声明了它的 
+
+需求。指标的命名线条“macd”和“signal”被分配了已经携带声明（幕后）的周期的对象。  
+
+macd 从操作“me1 - me2”中获取周期，而 me1 和 me2 都是具有不同周期的指数移动 
+
+平均线。signal 直接从 macd 上的指数移动平均线获取周期。这个 EMA 也考虑到现有 
+
+的 macd 周期和计算自身所需的样本量（period_signal）。histo 获取两个操作数 
+
+  
+﻿  
+
+“signal - macd”的最大值。一旦两者准备好，histo 也可以生成一个值  
+
+一个完整的自定义指标 #  
+
+让我们开发一个简单的自定义指标，它“指示”一个移动平均线（可以通过参数修改）是 
+
+否在给定数据之上：  
+
+Python  
+import backtrader as bt  
+import backtrader.indicators as btind  
+class OverUnderMovAv(bt.Indicator):  
+    lines = ('overunder',)  
+    params = dict(period=20, movav=btind.MovAv.Simple)  
+    def __init__(self):  
+        movav = self.p.movav(self.data, period=self.p.period)  
+        self.l.overunder = bt.Cmp(movav, self.data)  
+
+完成！  
+
+如果平均线在数据之上，指标将具有值“1”；如果在数据之下，则为“-1”。如果数据是 
+
+常规数据源，则比较收盘价将生成  1 和 -1。  
+
+虽然在绘图部分可以看到更多内容，为了在绘图世界中有一个良好和漂亮的公民，可 
+
+以添加一些内容：  
+
+Python  
+import backtrader as bt  
+import backtrader.indicators as btind  
+class OverUnderMovAv(bt.Indicator):  
+    lines = ('overunder',)  
+    params = dict(period=20, movav=btind.MovAv.Simple)  
+    plotinfo = dict(  
+        # 在 1 和 -1 之上和之下添加额外的边距         
+plotymargin=0.15,  
+        # 绘制参考水平线在 1.0 和 -1.0        plothlines=[1.0, - 
+1.0],  
+        # 简化 y 轴刻度为 1.0 和 -1.0        plotyticks=[1.0, - 
+1.0])  
+    # 使用虚线样式绘制 "overunder" 线（唯一的一个）    # ls 代表线条样 
+
+式，并直接传递给 matplotlib    plotlines =  
+dict(overunder=dict(ls='--'))  
+    def _plotlabel(self):  
+
+        # 此方法返回将在绘图上显示的标签列表        # 在指标名称之后  
+
+        # 周期必须始终存在        plabels = [self.p.period]  
+
+  
+﻿  
+
+        # 如果不是默认移动平均线，只放移动平均线        plabels +=  
+[self.p.movav] * self.p.notdefault('movav')  
+        return plabels  
+    def __init__(self):  
+        movav = self.p.movav(self.data, period=self.p.period)  
+        self.l.overunder = bt.Cmp(movav, self.data)  
+
+完成！  
+
+这个指标将具有  1 和 -1 的值，并且在绘图中有良好的表现。  
+
+  
+
+Indicator-周期混合  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:27:45 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+如果提供值的数据源有不同的时间框架，在 Cerebro  引擎中有不同的长度，指标将会 
+
+出错。  
+
+示例计算中， data0 有天的时间框架， data1 有月的时间框架：  
+
+Python  
+pivotpoint = btind.PivotPoint(self.data1)  
+sellsignal = self.data0.close < pivotpoint.s1  
+
+在这里，当收盘价低于 s1 线（第一个支撑）时，寻求卖出信号。  
+
+注意  
+
+PivotPoint 定义上在较大的时间框架中工作。  
+
+过去，这会导致以下错误：  
+
+Plaintext  
+return self.array[self.idx + ago]  
+IndexError: array index out of range  
+
+原因很简单：  self.data.close 从第一个时刻提供值，但  PivotPoint                    （以及 s1 线） 
+
+只有在整个月过去后才会提供值，这大约相当于 22 个 self.data0.close  的值。在 
+
+这 22 个收盘价期间，s1 还没有值，尝试从底层数组获取它会失败。  
+
+线条对象支持  (ago) 操作符（Python 中的 __call__ 特殊方法）以提供其延迟版本：  
+
+  
+﻿  
+
+Python  
+close1 = self.data.close(-1)  
+
+在这个例子中，对象 close1            （通过  [0] 访问时）始终包含由 close 提供的前一个值 
+
+ （-1）。此语法已被重用以适应时间框架。让我们重写上述的 pivotpoint 代码片段：  
+
+Python  
+pivotpoint = btind.PivotPoint(self.data1)  
+sellsignal = self.data0.close < pivotpoint.s1()  
+
+请注意，  () 无参数执行（在后台提供了一个 None ）。正在发生以下情况：  
+
+pivotpoint.s1() 返回一个内部  LinesCoupler 对象，该对象遵循较大范围的节奏。 
+
+该耦合器使用来自实际 s1 的最新提供的值填充自身（以 NaN 为默认值开始）。  
+
+但为了实现这一魔法，还需要额外的东西。 Cerebro 必须这样创建：  
+
+Python  
+cerebro = bt.Cerebro(runonce=False)  
+
+或这样执行：  
+
+Python  
+cerebro.run(runonce=False)  
+
+在这种模式下，指标和延迟评估的自动线条对象按步执行，而不是在紧密循环中执行。 
+
+这使整个操作变得更慢，但它使其成为可能。  
+
+底部的示例脚本现在可以运行：  
+
+输出：  
+
+Plaintext  
+0021,0021,0001,2005-01-31,2984.75,2935.96,0.00  
+0022,0022,0001,2005-02-01,3008.85,2935.96,0.00  
+...  
+0073,0073,0003,2005-04-15,3013.89,3010.76,0.00  
+0074,0074,0003,2005-04-18,2947.79,3010.76,1.00  
+...  
+
+在第 74 行，第一次出现 close < s1  。  
+
+脚本还提供了额外的可能性：耦合一个指标的所有线条。之前是：  
+
+Python  
+
+  
+﻿  
+
+self.sellsignal = self.data0.close < pp.s1()  
+
+替代方法是：  
+
+Python  
+pp1 = pp()  
+self.sellsignal = self.data0.close < pp1.s1  
+
+现在整个 PivotPoint 指标已被耦合，并且可以访问其任何线条（即 p、r1、r2、s1 、 
+
+s2）。脚本只对 s1 感兴趣，访问是直接的：  
+
+Shell  
+$ ./mixing-timeframes.py --multi  
+
+输出：  
+
+Plaintext  
+0021,0021,0001,2005-01-31,2984.75,2935.96,0.00  
+0022,0022,0001,2005-02-01,3008.85,2935.96,0.00  
+...  
+0073,0073,0003,2005-04-15,3013.89,3010.76,0.00  
+0074,0074,0003,2005-04-18,2947.79,3010.76,1.00  
+...  
+
+这里没有意外。与之前相同。“耦合”对象甚至可以绘制：  
+
+Shell  
+$ ./mixing-timeframes.py --multi --plot  
+
+完整耦合语法 #  
+
+对于具有多条线的线条对象（例如 PivotPoint 指标）：  
+
+Python  
+obj(clockref=None, line=-1)  
+
+clockref  ：如果 clockref 为 None  ，则周围对象（例如策略）将作为参考，以适应 
+
+较大时间框架（例如：月）到较小/更快的时间框架（例如：日）。如果需要，可以使 
+
+用另一个参考。  
+
+line  ：  
+
+•   如果默认的  -1 被给定，则所有线条都被耦合。  
+
+•   如果是另一个整数（例如 0 或 1 ），则单条线将被耦合，并通过索引（来自  
+
+  
+﻿  
+
+obj.lines[x] ）获取。  
+
+•   如果传递了字符串，则按名称获取线条。  
+
+在示例中，可以这样做：  
+
+Python  
+coupled_s1 = pp(line='s1')  
+
+对于只有一条线的线条对象（例如来自 PivotPoint 指标的  s1 线）：  
+
+Python  
+obj(clockref=None) （见上文的 `clockref`）  
+
+结论 #  
+
+在常规的  () 语法中，来自不同时间框架的数据源可以混合在指标中，始终考虑到  
+
+cerebro 需要使用 runonce=False 实例化或创建。  
+
+脚本代码和用法 #  
+
+可以在 backtrader 的源代码中找到示例。用法：  
+
+Shell  
+$ ./mixing-timeframes.py --help  
+usage: mixing-timeframes.py [-h] [--data DATA] [--multi] [--plot]  
+Sample for pivot point and cross plotting  
+optional arguments:  
+  -h, --help   show this help message and exit  
+  --data DATA  Data to be read in (default: ../../datas/2005-2006- 
+day-001.txt)  --multi      Couple all lines of the indicator  
+(default: False)  --plot       Plot the result (default: False)  
+
+代码：  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+import backtrader.indicators as btind  
+import backtrader.utils.flushfile  
+class St(bt.Strategy):  
+
+  
+﻿  
+
+    params = dict(multi=True)  
+    def __init__(self):  
+        self.pp = pp = btind.PivotPoint(self.data1)  
+        pp.plotinfo.plot = False  # deactivate plotting  
+        if self.p.multi:  
+            pp1 = pp()  # couple the entire indicators             
+self.sellsignal = self.data0.close < pp1.s1  
+        else:  
+            self.sellsignal = self.data0.close < pp.s1()  
+    def next(self):  
+        txt =  ','.join(  
+            ['%04d' % len(self),  
+              '%04d' % len(self.data0),  
+              '%04d' % len(self.data1),  
+             self.data.datetime.date(0).isoformat(),  
+              '%.2f' % self.data0.close[0],  
+              '%.2f' % self.pp.s1[0],  
+              '%.2f' % self.sellsignal[0]])  
+        print(txt)  
+def runstrat():  
+    args = parse_args()  
+    cerebro = bt.Cerebro()  
+    data = btfeeds.BacktraderCSVData(dataname=args.data)  
+    cerebro.adddata(data)  
+    cerebro.resampledata(data, timeframe=bt.TimeFrame.Months)  
+    cerebro.addstrategy(St, multi=args.multi)  
+    cerebro.run(stdstats=False, runonce=False)  
+    if args.plot:  
+        cerebro.plot(style='bar')  
+def parse_args():  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description='Sample for pivot point and cross plotting')  
+    parser.add_argument('--data', required=False,  
+                        default='../../datas/2005-2006-day- 
+001.txt',  
+                        help='Data to be read in')  
+    parser.add_argument('--multi', required=False,  
+action='store_true',  
+                        help='Couple all lines of the indicator')  
+    parser.add_argument('--plot', required=False,  
+action='store_true  
+',                        help=('Plot the result'))  
+    return parser.parse_args()  
+
+  
+﻿  
+
+if __name__ ==  '__main__':  
+    runstrat()  
+
+希望这能帮助你理解如何在 backtrader 中混合不同时间框架的数据！  
+
+Indicator&TA-Lib  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:27:49 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+即使 backtrader 已经提供了大量内置指标，并且开发一个指标主要是定义输入、输出 
+
+并以自然方式编写公式，但有些人仍然希望使用 TA-LIB。因为，指标 X 在 TA-LIB 库 
+
+中存在，但在 backtrader 中不存在（作者很乐意接受请求），还有，TA-LIB 的行为是 
+
+众所周知的，人们信赖传统的事物。  
+
+为了满足每个人的需求，提供了 TA-LIB 集成。  
+
+需求 #  
+
+•   TA-LIB 的 Python 封装  
+
+•   任何需要的依赖项（例如 numpy）  
+
+•   安装详情在 GitHub 仓库中  
+
+使用 TA-LIB #  
+
+与使用 backtrader 内置指标一样简单。以下是一个简单移动平均线的示例。首先是 
+
+backtrader 的示例：  
+
+Python  
+import backtrader as bt  
+class MyStrategy(bt.Strategy):  
+    params = (('period', 20),)  
+    def __init__(self):  
+        self.sma = bt.indicators.SMA(self.data,  
+period=self.p.period)  
+         ...  
+
+接下来是 TA-LIB 的示例：  
+
+Python  
+
+  
+﻿  
+
+import backtrader as bt  
+class MyStrategy(bt.Strategy):  
+    params = (('period', 20),)  
+    def __init__(self):  
+        self.sma = bt.talib.SMA(self.data,  
+timeperiod=self.p.period)  
+         ...  
+
+注意，TA-LIB 指标的参数由库本身定义，而不是 backtrader。在这种情况下，TA-LIB 
+
+中的 SMA 使用名为 timeperiod  的参数来定义操作窗口的大小。  
+
+对于需要多个输入的指标，例如随机指标：  
+
+Python  
+import backtrader as bt  
+class MyStrategy(bt.Strategy):  
+    params = (('period', 20),)  
+    def __init__(self):  
+        self.stoc = bt.talib.STOCH(self.data.high, self.data.low,  
+self.data.close,  
+                                   fastk_period=14,  
+slowk_period=3, slowd_period=3)  
+         ...  
+
+注意， high  、 low 和 close 分别传递。可以尝试传递 open 而不是 low                      （或其他任 
+
+何数据系列）进行实验。  
+
+TA-LIB 指标文档会自动解析并添加到 backtrader 文档中。你也可以查看 TA-LIB 的源 
+
+代码/文档，或者执行以下操作：  
+
+Python  
+print(bt.talib.SMA.__doc__)  
+
+输出如下：  
+
+Plaintext  
+SMA([input_arrays], [timeperiod=30])  
+  
+Simple Moving Average (Overlap Studies)  
+  
+Inputs:  
+    price: (any ndarray)  
+Parameters:  
+    timeperiod: 30  
+Outputs:  
+
+  
+﻿  
+
+    real  
+
+这提供了一些信息：  
+
+•  期望的输入（忽略 ndarray  的注释，因为 backtrader 在后台进行转换）  
+
+•  哪些参数及其默认值  
+
+•  指标实际提供的输出线  
+
+移动平均线和 MA_Type #  
+
+要选择特定的移动平均线，如 bt.talib.STOCH  ，标准的 TA-LIB MA_Type 可以通过  
+
+backtrader.talib.MA_Type 访问。例如：  
+
+Python  
+import backtrader as bt  
+print('SMA:', bt.talib.MA_Type.SMA)  
+print('T3:', bt.talib.MA_Type.T3)  
+
+绘制 TA-LIB 指标 #  
+
+与常规用法一样，绘制 TA-LIB 指标无需特殊操作。  
+
+注意：  
+
+输出蜡烛图的指标（所有寻找蜡烛图模式的指标）会生成二进制输出：0 或 100。为了 
+
+避免在图表上添加子图，存在自动绘图转换，以在识别模式时将其绘制在数据上。  
+
+示例和比较 #  
+
+以下是一些比较 TA-LIB 指标输出与 backtrader 内置指标的示例。注意：  
+
+•  TA-LIB 指标在图上有一个 TA_ 前缀。这是样例特意这样做以帮助用户区分。  
+
+•  如果两者结果相同，移动平均线会叠加在现有移动平均线上，无法单独查看，这 
+
+样的测试是通过的。  
+
+所有样例包括 CDLDOJI 指标作为参考。  
+
+KAMA     （考夫曼移动平均线） #  
+
+这是第一个示例，因为这是样本直接比较的所有指标中唯一存在差异的：  
+
+•  样本的初始值不同  
+
+•  在某个时间点，值会趋同，两个 KAMA 实现具有相同的行为。  
+
+  
+﻿  
+
+分析 TA-LIB 源码后发现：  
+
+•   TA-LIB 的实现为 KAMA 的初始值做了一个非行业标准的选择。  
+
+•   源代码引用：这里使用昨天的价格作为前一个 KAMA。  
+
+backtrader 采用了通常的选择，例如 Stockcharts ：  
+
+•   StockCharts 上的 KAMA  
+
+由于需要一个初始值来开始计算，第一个 KAMA 只是一个简单移动平均线。因此存在 
+
+差异。此外：  
+
+•   TA-LIB 的 KAMA 实现不允许指定用于调整 Kaufman 定义的可缩放常数的快慢周 
+
+期。  
+
+样本执行：  
+
+Plaintext  
+$ ./talibtest.py --plot --ind kama  
+
+输出  
+
+图像  
+
+SMA #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind sma  
+输出  
+
+图像  
+
+EMA #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind ema  
+
+输出  
+
+图像  
+
+随机指标 #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind stoc  
+
+输出  
+
+  
+﻿  
+
+图像  
+
+RSI #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind rsi  
+输出  
+
+图像  
+
+MACD #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind macd  
+输出  
+
+图像  
+
+布林带 #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind bollinger  
+输出  
+
+图像  
+
+AROON #  
+
+注意，TA-LIB 选择先绘制下降线，并且颜色与 backtrader 内置指标相反。  
+
+Plaintext  
+$ ./talibtest.py --plot --ind aroon  
+输出  
+
+图像  
+
+Ultimate Oscillator #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind ultimate  
+
+输出  
+
+图像  
+
+  
+﻿  
+
+Trix #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind trix  
+输出  
+
+图像  
+
+ADXR #  
+
+backtrader 同时提供 ADX 和 ADXR 线。  
+
+Plaintext  
+$ ./talibtest.py --plot --ind adxr  
+输出  
+
+图像  
+
+DEMA #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind dema  
+
+输出  
+
+图像  
+
+TEMA #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind tema  
+输出  
+
+图像  
+
+PPO #  
+
+backtrader 不仅提供 PPO 线，还提供更传统的 MACD 方法。  
+
+Plaintext  
+$ ./talibtest.py --plot --ind ppo  
+输出  
+
+图像  
+
+  
+﻿  
+
+WilliamsR #  
+
+Plaintext  
+$ ./talibtest.py --plot --ind williamsr  
+输出  
+
+图像  
+
+ROC #  
+
+所有指标应具有相同的形状，但跟踪动量或变化率有多种定义。  
+
+Plaintext  
+$ ./talibtest.py --plot --ind roc  
+输出  
+
+图像  
+
+样本用法 #  
+
+Plaintext  
+$ ./talibtest.py --help  
+usage: talibtest.py [-h] [--data0 DATA0] [--fromdate FROMDATE]  
+                    [--todate TODATE]  
+                    [--ind  
+{sma,ema,stoc,rsi,macd,bollinger,aroon,ultimate,trix,kama,adxr,dem 
+a,tema,ppo,williamsr,roc}]  
+                    [--no-doji] [--use-next] [--plot [kwargs]]  
+  
+Sample for ta-lib  
+  
+optional arguments:  
+  -h, --help            show this help message and exit  
+  --data0 DATA0         Data to be read in (default:  
+                         ../../datas/yhoo-1996-2015.txt)  
+  --fromdate FROMDATE   Starting date in YYYY-MM-DD format  
+(default:  
+                        2005-01-01)  
+  --todate TODATE       Ending date in YYYY-MM-DD format (default:  
+2006-12-31)  
+  --ind  
+{sma,ema,stoc,rsi,macd,bollinger,aroon,ultimate,trix,kama,adxr,dem 
+a,tema,ppo,williamsr,roc}  
+                        Which indicator pair to show together  
+
+  
+﻿  
+
+(default: sma)  
+  --no-doji             Remove Doji CandleStick pattern checker  
+(default:  
+                        False)  
+  --use-next            Use next (step by step) instead of once  
+(batch)  
+                        (default: False)  
+  --plot [kwargs], -p [kwargs]  
+                        Plot the read data applying any kwargs  
+passed For  
+                        example (escape the quotes if needed): -- 
+plot  
+                        style="candle" (to plot candles) (default:  
+None)  
+
+样本代码 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class TALibStrategy(bt.Strategy):  
+    params = (('ind', 'sma'), ('doji', True),)  
+    INDS = ['sma', 'ema', 'stoc', 'rsi', 'mac  
+d', 'bollinger', 'aroon',             'ultimate', 'trix', 'kama',  
+'adxr', 'dema', 'ppo', 'tema',  
+             'roc', 'williamsr']  
+    def __init__(self):  
+        if self.p.doji:  
+            bt.talib.CDLDOJI(self.data.open, self.data.high,  
+                             self.data.low, self.data.close)  
+        if self.p.ind ==  'sma':  
+            bt.talib.SMA(self.data.close, timeperiod=25,  
+plotname='TA_SMA')  
+            bt.indicators.SMA(self.data, period=25)  
+        elif self.p.ind ==  'ema':  
+            bt.talib.EMA(timeperiod=25, plotname='TA_SMA')  
+            bt.indicators.EMA(period=25)  
+        elif self.p.ind ==  'stoc':  
+            bt.talib.STOCH(self.data.high, self.data.low,  
+self.data.close,  
+
+  
+﻿  
+
+                           fastk_period=14, slowk_period=3,  
+slowd_period=3,  
+                           plotname='TA_STOCH')  
+            bt.indicators.Stochastic(self.data)  
+        elif self.p.ind ==  'macd':  
+            bt.talib.MACD(self.data, plotname='TA_MACD')  
+            bt.indicators.MACD(self.data)  
+            bt.indicators.MACDHisto(self.data)  
+        elif self.p.ind ==  'bollinger':  
+            bt.talib.BBANDS(self.data, timeperiod=25,  
+                            plotname='TA_BBANDS')  
+            bt.indicators.BollingerBands(self.data, period=25)  
+        elif self.p.ind ==  'rsi':  
+            bt.talib.RSI(self.data, plotname='TA_RSI')  
+            bt.indicators.RSI(self.data)  
+        elif self.p.ind ==  'aroon':  
+            bt.talib.AROON(self .data.high, self.data.low,  
+plotname='TA_AROON')  
+            bt.indicators.AroonIndicator(self .data)  
+        elif self.p.ind ==  'ultimate':  
+            bt.talib.ULTOSC(self.data.high, self.data.low,  
+self.data.close,  
+                            plotname='TA_ULTOSC')  
+            bt.indicators.UltimateOscillator(self.data)  
+        elif self.p.ind ==  'trix':  
+            bt.talib.TRIX(self.data, timeperiod=25,   
+plotname='TA_TRIX')  
+            bt.indicators.Trix(self.data, period=25)  
+        elif self.p.ind ==  'adxr':  
+            bt.talib.ADXR(self .data.high, self.data.low,  
+self.data.close,  
+                          plotname='TA_ADXR')  
+            bt.indicators.ADXR(self .data)  
+        elif self.p.ind ==  'kama':  
+            bt.talib.KAMA(self.data, timeperiod=25,  
+plotname='TA_KAMA')  
+            bt.indicators.KAMA(self.data, period=25)  
+        elif self.p.ind ==  'dema':  
+            bt.talib.DEMA(self.data, timeperiod=25,  
+plotname='TA_DEMA')  
+            bt.indicators.DEMA(self.data, period=25)  
+        elif self.p.ind ==  'ppo':  
+            bt.talib.PPO(self.data, plotname='TA_PPO')  
+            bt.indicators.PPO(self.data, _movav=bt.indicators.SMA)  
+
+  
+﻿  
+
+        elif self.p.ind ==  'tema':  
+            bt.talib.TEMA(self.data, timeperiod=25,  
+plotname='TA_TEMA')  
+            bt.indicators.TEMA(self.data, period=25)  
+        elif self.p.ind ==  'roc':  
+            bt.talib.ROC(self.data, timeperiod=12,  
+plotname='TA_ROC')  
+            bt.talib.ROCP(self.data, timeperiod=12,  
+plotname='TA_ROCP')  
+            bt.talib.ROCR(self.data, timeperiod=12,  
+plotname='TA_ROCR')  
+            bt.talib.ROCR100(self.data, timeperiod=12,  
+plotname='TA_ROCR100')  
+            bt.indicators.ROC(self.data, period=12)  
+            bt.indicators.Momentum(self .data, period=12)  
+            bt.indicators.MomentumOscillator(self.data, period=12)  
+        elif self.p.ind ==  'williamsr':  
+            bt.talib.WILLR(self .data.high, self.data.low,  
+self.data.close,  
+                           plotname='TA_WILLR')  
+            bt.indicators.WilliamsR(self.data)  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    dkwargs = dict()  
+    if args.fromdate:  
+        fromdate = datetime.datetime.strptime(args.fromdate,  '%Y- 
+%m-%d')  
+        dkwargs['fromdate'] = fromdate  
+    if args.todate:  
+        todate = datetime.datetime.strptime(args.todate,  '%Y-%m- 
+%d')  
+        dkwargs['todate'] = todate  
+    data0 = bt.feeds .YahooFinanceCSVData(dataname=args.data0,  
+**dkwargs)  
+    cerebro.adddata(data0)  
+    cerebro.addstrategy(TALibStrategy, ind=args.ind, doji=not  
+args.no_doji)  
+    cerebro.run(runcone=not args.use_next, stdstats=False)  
+    if args.plot:  
+        pkwargs = dict(style='candle')  
+        if args.plot is not True:  # evals to True but is not True             
+npkwargs = eval('dict(' + args.plot +  ')')  # args were passed             
+pkwargs.update(npkwargs)  
+
+  
+﻿  
+
+        cerebro.plot(**pkwargs)  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description='Sample for sizer')  
+    parser.add_argument('--data0', required=False,  
+                        default='../../datas/yhoo-1996-2015.txt',  
+                        help='Data to be read in')  
+    parser.add_argument('--fromdate', required=False,  
+                        default='2005-01-01',  
+                        help='Starting date in YYYY-MM-DD format')  
+    parser.add_argument('--todate', required=False,  
+                        default='2006-12-31',  
+                        help='Ending date in YYYY-MM-DD format')  
+    parser.add_argument('--ind', required=False, action='store',  
+                        default=TALibStrategy.INDS[0],  
+                        choices=TALibStrategy.INDS,  
+                        help=('Which indicator pair to show  
+together'))  
+    parser.add_argument('--no-doji', required=False,  
+action='store_true',  
+                        help=('Remove Doji CandleStick pattern  
+checker'))  
+    parser.add_argument('--use-next', required=False,  
+action='store_true',  
+                        help=('Use next (step by step) '                               
+'instead of once (batch)'))  
+    # Plot options    parser.add_argument('--plot', '-p',  
+nargs='?', required=False,  
+                        metavar='kwargs', const=True,  
+                        help=('Plot the read data applying any  
+kwargs passed\n'                               '\n'                               
+'For example (escape the quotes if needed):\n'                               
+'\n'                               '  --plot style="candle" (to  
+plot candles)\n'))  
+    if pargs is not None:  
+        return parser.parse_args(pargs)  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+这样，您就可以在 backtrader 中使用 TA-LIB 的指标，并根据需要进行绘图和比较。  
+
+Sizer-sizers  
+
+  

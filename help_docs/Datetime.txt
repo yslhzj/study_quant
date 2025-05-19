@@ -1,0 +1,1785 @@
+﻿  
+
+参数：  
+
+•   percents  （默认： 20 ）  
+
+AllInSizerInt #  
+
+Python  
+class backtrader.sizers.AllInSizerInt()  
+
+此 Sizer 返回经纪人所有可用现金，并将大小截断为整数。  
+
+参数：  
+
+•   percents  （默认： 100 ）  
+
+Datetime-管理  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:36:51 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+在发布  1.5.0 版本之前，backtrader 对时间管理采用的是直接方式，即直接使用数据 
+
+源计算出的任何日期时间。用户输入的参数，如 fromdate                     （或 sessionstart ），也 
+
+可以传递给任何数据源。  
+
+这种方法在对冻结数据源进行回测时效果很好。可以假设输入的日期时间在进入系统 
+
+之前已经经过处理。  
+
+但在  1.5.0  版本之后，backtrader  开始支持实时数据源，这就需要考虑日期时间管理。 
+
+如果以下情况总是成立，那么就不需要进行这种管理：  
+
+•   纽约的交易者交易 ES-Mini。这两个的时区都是 US/Eastern                （或其别名）。  
+
+•   柏林的交易者交易 DAX 期货。在这种情况下，两个的时区都是 CET                         （或  
+
+Europe/Berlin）。  
+
+上面的直接输入-输出日期时间方法可以工作，因为柏林的交易者可以始终这样做：  
+
+Python  
+class Strategy(bt.Strategy):  
+    def next(self):  
+
+        # DAX 期货在 CET 时间早上 08:00 开盘        if  
+self.data.datetime.time() < datetime.time(8, 30):  
+
+            # 市场运行 30 分钟之前不操作            return  #  
+
+  
+﻿  
+
+当同一个柏林交易者决定交易 ES-Mini 时，直接方法的问题就会显现出来。因为 DST 
+
+ （夏令时）的变化发生在一年中的不同时间，这会导致时间差异在一年中的某些周内 
+
+不同步。  
+
+以下代码并不总是有效：  
+
+Python  
+class Strategy(bt.Strategy):  
+    def next(self):  
+        # SPX 在 US/Eastern 全年早上 09:30 开盘        # 大部分时间 
+
+是 15:30 CET        # 但有时是 16:30 CET 或 14:30 CET，取决于美国和欧 
+
+洲的 DST 切换时间        # 因此以下代码是不可靠的  
+        if self.data.datetime.time() < datetime.time(16, 0):  
+            # 市场运行 30 分钟之前不操作            return  #  
+
+使用时区操作 #  
+
+为了解决上述问题并仍然保持与直接输入-输出时间方法的兼容性，backtrader 为终端 
+
+用户提供了以下选项：  
+
+日期时间输入 #  
+
+默认情况下，平台不会触及数据源提供的日期时间。  
+
+用户可以通过以下方式覆盖此输入：  
+
+•  为数据源提供 tzinput 参数。这必须是与 datetime.tzinfo 接口兼容的对象。 
+
+用户很可能会提供一个 pytz.timezone 实例。  
+
+通过这个决定，backtrader 内部使用的时间被认为是 UTC 类格式，即：  
+
+•  如果数据源已经以 UTC 格式存储它。  
+
+•  通过 tzinput 转换后。  
+
+它实际上不是 UTC，但它是用户的参考，因此是 UTC 类的。  
+
+日期时间输出 #  
+
+如果数据源可以自动确定时区，这将是默认设置。  
+
+这在实时数据源的情况下尤其有意义，例如柏林（CET 时区）的交易者交易  
+
+US/Eastern 时区的产品。  
+
+因为交易者总是得到正确的时间，在上面的示例中，开盘时间在 US/Eastern 时区内始 
+
+终是早上 09:30 ，而不是一年中大部分时间的  15:30 CET，有时是  16:30 CET，有时 
+
+  
+﻿  
+
+是  14:30 CET。  
+
+如果不能确定，那么输出将是输入时确定的时间（UTC 类时间）。  
+
+用户可以覆盖并确定输出的实际时区：  
+
+•   为数据源提供 tz 参数。这必须是与 datetime.tzinfo 接口兼容的对象。用户很 
+
+可能会提供一个 pytz.timezone 实例。  
+
+注意：  
+
+用户输入的参数（如 fromdate 或 sessionstart ）应与实际 tz  同步，无论是由数 
+
+据源自动计算，用户提供还是默认（ None  ，表示直接输入-输出日期时间）。  
+
+考虑到上述所有内容，让我们回顾一下柏林的交易者，交易 US/Eastern 时区的产品：  
+
+Python  
+import pytz  
+import bt  
+data = bt.feeds .MyFeed( 'ES-Mini', tz=pytz.timezone( 'US/Eastern'))  
+class Strategy(bt.Strategy):  
+    def next(self):  
+        # 这将全年有效。        # 数据源将在  'US/Eastern' 时区的框架 
+
+内返回数据，        # 用户将  '10:00' 作为参考时间        # 因为在  
+
+'US/Eastern' 时区，SPX 指数总是        # 在 09:30 开盘，这将始终有效  
+        if self.data.datetime.time() < datetime.time(10, 0):  
+            # 市场运行 30 分钟之前不操作            return  #  
+
+对于可以自动确定输出时区的数据源：  
+
+Python  
+import bt  
+data = bt.feeds .MyFeedAutoTZ( 'ES-Mini')  
+class Strategy(bt.Strategy):  
+    def next(self):  
+        # 这将全年有效。        # 数据源将在  'US/Eastern' 时区的框架 
+
+内返回数据，        # 用户将  '10:00' 作为参考时间        # 因为在  
+
+'US/Eastern' 时区，SPX 指数总是        # 在 09:30 开盘，这将始终有效  
+        if self.data.datetime.time() < datetime.time(10, 0):  
+            # 市场运行 30 分钟之前不操作            return  #  
+
+显然，上面示例中的 MyFeed 和 MyFeedAuto 只是虚拟名称。  
+
+注意：  
+
+在撰写本文时，唯一包含在发行版中的能够自动确定时区的数据源是连接到  
+
+Interactive Brokers 的数据源。   
+
+  
+﻿  
+
+Datetime-定时器  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:39:51 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+在版本  1.9.44.116 中，backtrader 添加了定时器功能。这使得在特定时间点调用  
+
+notify_timer  （在  Cerebro  和  Strategy  中可用）成为可能，用户可以进行精细控制。  
+
+选项 #  
+
+•   基于绝对时间输入或相对于会话开始/结束时间的定时器。  
+
+•   时间规范的时区指定，可以直接通过 pytz 兼容对象或通过数据源会话结束时间进 
+
+行指定。  
+
+•  相对于指定时间的起始偏移。  
+
+•   重复间隔。  
+
+•   工作日过滤器（带有结转选项）。  
+
+•   月份天数过滤器（带有结转选项）。  
+
+•   自定义回调过滤器。  
+
+使用模式 #  
+
+在 Cerebro 和 Strategy 子类中，定时器回调将在以下方法中接收：  
+
+Python  
+def notify_timer(self, timer, when, *args, **kwargs):  
+     '''接收定时器通知，其中 `timer` 是通过 `add_timer` 返回的定时器， 
+
+`when` 是调用时间。  
+
+    `args` 和 `kwargs` 是传递给 `add_timer` 的额外参数。  
+
+    实际的 `when` 时间可能稍后，但系统可能无法在之前调用定时器。  
+
+    此值是定时器值，而不是系统时间。  
+     '''  
+
+添加定时器 - 通过 Strategy #  
+
+使用以下方法完成：  
+
+Python  
+
+  
+﻿  
+
+def add_timer(self, when,  
+              offset=datetime.timedelta(),  
+repeat=datetime.timedelta(),  
+              weekdays=[], weekcarry=False,  
+              monthdays=[], monthcarry=True,  
+              allow=None,  
+              tzdata=None, cheat=False,  
+              *args, **kwargs):  
+     '''  
+
+它返回创建的 Timer 实例。下面是参数的解释。  
+
+添加定时器 - 通过 Cerebro #  
+
+使用相同的方法，只是增加了参数 strats  。如果设置为 True  ，定时器不仅会通知给  
+
+cerebro ，还会通知系统中运行的所有策略。  
+
+Python  
+def add_timer(self, when,  
+              offset=datetime.timedelta(),  
+repeat=datetime.timedelta(),  
+              weekdays=[], weekcarry=False,  
+              monthdays=[], monthcarry=True,  
+              allow=None,  
+              tzdata=None, cheat=False, strats=False,  
+              *args, **kwargs):  
+     '''  
+
+它返回创建的 Timer 实例。  
+
+定时器调用时间 #  
+
+如果 cheat=False #  
+
+这是默认设置。在这种情况下，定时器将在以下情况后调用：  
+
+•   数据源加载当前柱的新值之后。  
+
+•   经纪人评估订单并重新计算投资组合价值之后。  
+
+•   指标重新计算之前（因为这由策略触发）。  
+
+•   调用任何策略的 next 方法之前。  
+
+如果 cheat=True #  
+
+  
+﻿  
+
+在这种情况下，定时器将在以下情况后调用：  
+
+•   数据源加载当前柱的新值之后。  
+
+•   经纪人评估订单并重新计算投资组合价值之前。  
+
+因此，在指标重新计算和调用任何策略的 next 方法之前调用定时器，这样可以实现 
+
+以下场景：  
+
+•   在新柱被经纪人评估之前调用定时器。  
+
+•   指标具有前一天收盘时的值，并可用于生成进出信号（或在上次评估 next  时设置 
+
+标志）。  
+
+•   因为新价格可用，可以使用开盘价计算股份。这假设一个人通过观察开盘拍卖得 
+
+到良好的开盘指示。  
+
+使用每日柱 #  
+
+示例  scheduled.py  默认使用  backtrader 发行版中提供的标准每日柱。策略参数如下：  
+
+Python  
+class St(bt.Strategy):  
+    params = dict(  
+        when=bt.timer.SESSION_START,  
+        timer=True,  
+        cheat=False,  
+        offset=datetime.timedelta(),  
+        repeat=datetime.timedelta(),  
+        weekdays=[],  
+    )  
+
+数据具有以下会话时间：  
+
+•   开始：09:00  
+
+•   结束：17:30  
+
+运行只带时间的情况：  
+
+Shell  
+$ ./scheduled.py --strat when='datetime.time(15,30)'  
+
+输出结果：  
+
+Plaintext  
+strategy notify_timer with tid 0, when 2005-01-03 15:30:00 cheat  
+False  
+
+  
+﻿  
+
+1, 2005-01-03 17:30:00, Week 1, Day 1, O 2952.29, H 2989.61, L  
+2946.8, C 2970.02  
+strategy notify_timer with tid 0, when 2005-01-04 15:30:00 cheat  
+False  
+2, 2005-01-04 17:30:00, Week 1, Day 2, O 2969.78, H 2979.88, L  
+2961.14, C 2971.12  
+strategy notify_timer with tid 0, when 2005-01-05 15:30:00 cheat  
+False  
+3, 2005-01-05 17:30:00, Week 1, Day 3, O 2969.0, H 2969.0, L  
+2942.69, C 2947.19  
+strategy notify_timer with tid 0, when 2005-01-06 15:30:00 cheat  
+False  
+...  
+
+指定的定时器在  15:30 触发。没有惊喜。让我们增加 30 分钟的偏移：  
+
+Shell  
+$ ./scheduled.py --strat  
+when='datetime.time(15,30)',offset='datetime.timedelta(minutes=30) 
+'  
+
+输出结果：  
+
+Plaintext  
+strategy notify_timer with tid 0, when 2005-01-03 16:00:00 cheat  
+False  
+1, 2005-01-03 17:30:00, Week 1, Day 1, O 2952.29, H 2989.61, L  
+2946.8, C 2970.02  
+strategy notify_timer with tid 0, when 2005-01-04 16:00:00 cheat  
+False  
+2, 2005-01-04 17:30:00, Week 1, Day 2, O 2969.78, H 2979.88, L  
+2961.14, C 2971.12  
+strategy notify_timer with tid 0, when 2005-01-05 16:00:00 cheat  
+False  
+...  
+
+定时器的时间从  15:30 变为  16:00。没有惊喜。让我们以会话开始为参考：  
+
+Shell  
+$ ./scheduled.py --strat  
+when='bt.timer.SESSION_START',offset='datetime.timedelta(minutes=3 
+0)'  
+
+输出结果：  
+
+  
+﻿  
+
+Plaintext  
+strategy notify_timer with tid 0, when 2005-01-03 09:30:00 cheat  
+False  
+1, 2005-01-03 17:30:00, Week 1, Day 1, O 2952.29, H 2989.61, L  
+2946.8, C 2970.02  
+strategy notify_timer with tid 0, when 2005-01-04 09:30:00 cheat  
+False  
+2, 2005-01-04 17:30:00, Week 1, Day 2, O 2969.78, H 2979.88, L  
+2961.14, C 2971.12  
+...  
+
+定时器回调时间为 09:30 。会话开始时间为 09:00 。这样可以简单地说希望在会话开始 
+
+后 30 分钟执行一个操作。  
+
+运行带有 5 分钟柱的数据 #  
+
+示例 scheduled-min.py 默认运行 backtrader 发行版中的标准 5 分钟柱。策略参数如 
+
+下：  
+
+Python  
+class St(bt.Strategy):  
+    params = dict(  
+        when=bt.timer.SESSION_START,  
+        timer=True,  
+        cheat=False,  
+        offset=datetime.timedelta(),  
+        repeat=datetime.timedelta(),  
+        weekdays=[],  
+        weekcarry=False,  
+        monthdays=[],  
+        monthcarry=True,  
+    )  
+
+数据具有相同的会话时间：  
+
+•   开始：09:00  
+
+•   结束：17:30  
+
+让我们进行一些实验。首先是一个定时器。  
+
+Shell  
+$ ./scheduled-min.py --strat when='datetime.time(15, 30)'  
+
+输出结果：  
+
+  
+﻿  
+
+Plaintext  
+1, 2006-01-02 09:05:00, Week 1, Day 1, O 3578.73, H 3587.88, L  
+3578.73, C 3582.99  
+2, 2006-01-02 09:10:00, Week 1, Day 1, O 3583.01, H 3588.4, L  
+3583.01, C 3588.03  
+...  
+77, 2006-01-02 15:25:00, Week 1, Day 1, O 3599.07, H 3599.68, L  
+3598.47, C 3599.68  
+strategy notify_timer with tid 0, when 2006-01-02 15:30:00 cheat  
+False  
+78, 2006-01-02 15:30:00, Week 1, Day 1, O 3599.64, H 3599.73, L  
+3599.0, C 3599.67  
+...  
+179  
+  
+, 2006-01-03 15:25:00, Week 1, Day 2, O 3634.72, H 3635.0, L  
+3634.06, C 3634.87  
+strategy notify_timer with tid 0, when 2006-01-03 15:30:00 cheat  
+False  
+180, 2006-01-03 15:30:00, Week 1, Day 2, O 3634.81, H 3634.89, L  
+3634.04, C 3634.23  
+...  
+
+定时器在  15:30 触发。日志显示了它在前两天的触发情况。  
+
+增加 15 分钟的重复间隔 #  
+
+Shell  
+$ ./scheduled-min.py --strat when='datetime.time(15,  
+30)',repeat='datetime.timedelta(minutes=15)'  
+
+输出结果：  
+
+Plaintext  
+...  
+74, 2006-01-02 15:10:00, Week 1, Day 1, O 3596.12, H 3596.63, L  
+3595.92, C 3596.63  
+75, 2006-01-02 15:15:00, Week 1, Day 1, O 3596.36, H 3596.65, L  
+3596.19, C 3596.65  
+76, 2006-01-02 15:20:00, Week 1, Day 1, O 3596.53, H 3599.13, L  
+3596.12, C 3598.9  
+77, 2006-01-02 15:25:00, Week 1, Day 1, O 3599.07, H 3599.68, L  
+3598.47, C 3599.68  
+
+  
+﻿  
+
+strategy notify_timer with tid 0, when 2006-01-02 15:30:00 cheat  
+False  
+78, 2006-01-02 15:30:00, Week 1, Day 1, O 3599.64, H 3599.73, L  
+3599.0, C 3599.67  
+79, 2006-01-02 15:35:00, Week 1, Day 1, O 3599.61, H 3600.29, L  
+3599.52, C 3599.92  
+80, 2006-01-02 15:40:00, Week 1, Day 1, O 3599.96, H 3602.06, L  
+3599.76, C 3602.05  
+strategy notify_timer with tid 0, when 2006-01-02 15:45:00 cheat  
+False  
+81, 2006-01-02 15:45:00, Week 1, Day 1, O 3601.97, H 3602.07, L  
+3601.45, C 3601.83  
+82, 2006-01-02 15:50:00, Week 1, Day 1, O 3601.74, H 3602.8, L  
+3601.63, C 3602.8  
+83, 2006-01-02 15:55:00, Week 1, Day 1, O 3602.53, H 3602.74, L  
+3602.33, C 3602.61  
+strategy notify_timer with tid 0, when 2006-01-02 16:00:00 cheat  
+False  
+84, 2006-01-02 16:00:00, Week 1, Day 1, O 3602.58, H 3602.75, L  
+3601.81, C 3602.14  
+85, 2006-01-02 16:05:00, Week 1, Day 1, O 3602.16, H 3602.16, L  
+3600.86, C 3600.96  
+86, 2006-01-02 16:10:00, Week 1, Day 1, O 3601.2, H 3601.49, L  
+3600.94, C 3601.27  
+...  
+strategy notify_timer with tid 0, when 2006-01-02 17:15:00 cheat  
+False  
+99, 2006-01-02 17:15:00, Week 1, Day 1, O 3603.96, H 3603.96, L  
+3602.89, C 3603.79  
+100, 2006-01-02 17:20:00, Week 1, Day 1, O 3603.94, H 3605.95, L  
+3603.87, C 3603.91  
+101, 2006-01-02 17:25:00, Week 1, Day 1, O 3604.0, H 3604.76, L  
+3603.85, C 3604.64  
+strategy notify_timer with tid 0, when 2006-01-02 17:30:00 cheat  
+False  
+102, 2006-01-02 17:30:00, Week 1, Day 1, O 3604.06, H 3604.41, L  
+3603.95, C 3604.33  
+103, 2006-01-03 09:05:00, Week 1, Day 2, O 3604.08, H 3609.6, L  
+3604.08, C 3609.6  
+104, 2006-01-03 09:10:00, Week 1, Day 2, O 3610.34, H 3617.31, L  
+3610.34, C 3617.31  
+105, 2006-01-03 09:15:00, Week 1, Day 2, O 3617.61, H 3617.87, L  
+3616.03, C 3617.51  
+106, 2006-01-03 09:20:00, Week 1, Day 2, O 3617.24, H 3618.86, L  
+
+  
+﻿  
+
+3616.09, C 3618.42  
+...  
+179, 2006-01-03 15:25:00, Week 1, Day 2, O 3634.72, H 3635.0, L  
+3634.06, C 3634.87  
+strategy notify_timer with tid 0, when 2006-01-03 15:30:00 cheat  
+False  
+180, 2006-01-03 15:30:00, Week 1, Day 2, O 3634.81, H 3634.89, L  
+3634.04, C 3634.23  
+...  
+
+使用作弊模式 #  
+
+Shell  
+$ ./scheduled-min.py --strat  
+when='bt.timer.SESSION_START',cheat=True  
+
+输出结果：  
+
+Plaintext  
+strategy notify_timer with tid 1, when 2006-01-02 09:00:00 cheat  
+True  
+-- 2006-01-02 09:05:00 Create buy order  
+strategy notify_timer with tid 0, when 2006-01-02 09:00:00 cheat  
+False  
+1, 2006-01-02 09:05:00, Week 1, Day 1, O 3578.73, H 3587.88, L  
+3578.73, C 3582.99  
+-- 2006-01-02 09:10:00 Buy Exec @ 3583.01  
+2, 2006-01-02 09:10:00, Week 1, Day 1, O 3583.01, H 3588.4, L  
+3583.01, C 3588.03  
+...  
+
+创建订单时间为  09:05:00 ，执行时间为  09:10:00 ，因为经纪人没有在开盘时作弊模式。 
+
+让我们设置它……  
+
+Shell  
+$ ./scheduled-min.py --strat  
+when='bt.timer.SESSION_START',cheat=True --broker coo=True  
+
+输出结果：  
+
+Plaintext  
+strategy notify_timer with tid 1, when 2006-01-02 09:00:00 cheat  
+True  
+
+  
+﻿  
+
+-- 2006-01-02 09:05:00 Create buy order  
+strategy notify_timer with tid 0, when 2006-01-02 09:00:00 cheat  
+False  
+-- 2006-01-02 09:05:00 Buy Exec @ 3578.73  
+1, 2006-01-02 09:05:00, Week 1, Day 1, O 3578.73, H 3587.88, L  
+3578.73, C 3582.99  
+2, 2006-01-02 09:10:00, Week 1, Day 1, O 3583.01, H 3588.4, L  
+3583.  
+  
+01, C 3588.03  
+...  
+
+下达时间和执行时间均为 09:05:00 ，执行价格为 09:05:00 的开盘价。  
+
+其他场景 #  
+
+定时器允许通过传递一个整数列表来指定哪些天（iso 代码，周一为  1，周日为 7）定 
+
+时器可以实际触发。例如：  
+
+Python  
+weekdays=[5]  # 这将请求定时器仅在周五有效  
+
+如果周五是非交易日，并且定时器应在下一个交易日触发，可以添加  
+
+weekcarry=True  。  
+
+类似地，可以决定每月的某一天，例如：  
+
+Python  
+
+monthdays=[15]  # 每月的 15 日  
+
+如果  15 日是非交易日，并且定时器应在下一个交易日触发，可以添加  
+
+monthcarry=True  。  
+
+目前没有实现像以下规则的功能：3 月、6 月、9 月和  12 月的第三个星期五（期货/期 
+
+权到期日），但可以通过传递一个回调函数来实现规则：  
+
+Python  
+
+allow=callable  # 回调函数接收一个 datetime.date 实例，如果日期适用于 
+
+定时器，则返回 True，否则返回 False  
+
+实现上述规则的代码：  
+
+Python  
+class FutOpExp(object):  
+
+  
+﻿  
+
+    def __init__(self):  
+        self.fridays = 0        self.curmonth = -1  
+    def __call__(self, d):  
+        _, _, isowkday = d.isocalendar()  
+        if d.month != self.curmonth:  
+            self.curmonth = d.month  
+            self.fridays = 0  
+        # 周一=1 ... 周日=7        if isowkday == 5 and  
+self.curmonth in [3, 6, 9, 12]:  
+            self.fridays += 1  
+            if self.fridays == 3:  # 第三个星期五                 
+
+return True  # 定时器允许  
+
+        return False  # 定时器不允许  
+
+然后将 allow=FutOpExp() 传递给定时器的创建。  
+
+add_timer  的参数 #  
+
+•   when  ：可以是  
+
+    ￮  datetime.time 实例（见下文的 tzdata  ）  
+
+    ￮   bt.timer.SESSION_START  引用会话开始时间  
+
+    ￮   bt.timer.SESSION_END  引用会话结束时间  
+
+•   offset  ：必须是 datetime.timedelta 实例，用于偏移 when  的值。与  
+
+SESSION_START 和 SESSION_END 结合使用时很有意义，表示定时器在会话开始后  15  
+
+分钟被调用。  
+
+•   repeat  ：必须是 datetime.timedelta 实例，指示首次调用后，在同一会话内 
+
+重复调用的间隔。  
+
+•   weekdays  ：一个排序的可迭代对象，包含整数，指示定时器在星期几（iso  代码， 
+
+周一为  1，周日为 7）实际有效。如果未指定，定时器将在所有天数有效。  
+
+•   weekcarry  （默认值：False）：如果为 True ，并且在一周内未看到指定的日期 
+
+ （例如交易假日），定时器将在下一天执行（即使在新的一周内）。  
+
+•   monthdays  ：一个排序的可迭代对象，包含整数，指示定时器在每月的哪些天实 
+
+际有效。如果未指定，定时器将在所有天数有效。  
+
+•   monthcarry  （默认值：True）：如果未看到指定日期（周末、交易假日），定时器 
+
+将在下一个可用的日子执行。  
+
+•   allow  （默认值：None）：一个回调函数，接收一个 datetime.date 实例，如果 
+
+日期适用于定时器，则返回 True ，否则返回 False。  
+
+  
+﻿  
+
+•   tzdata  ：可以是 None      （默认），pytz 实例或数据源实例。  
+
+    ￮   None ： when 按原样解释（这相当于将其视为 UTC，即使它不是）。  
+
+    ￮   pytz 实例： when 将解释为在指定时区的本地时间。  
+
+    ￮   数据源实例： when 将解释为在数据源实例的 tz 参数指定的本地时间。  
+
+•   strats   （默认值：False）：是否调用策略的 notify_timer  。  
+
+•   cheat   （默认值：False）：如果为 True ，定时器将在经纪人有机会评估订单之前 
+
+调用。这打开了在会话开始前基于开盘价下单的机会。  
+
+•   *args  ：任何额外的参数将传递给 notify_timer  。  
+
+•   **kwargs  ：任何额外的关键字参数将传递给 notify_timer  。  
+
+示例用法 scheduled.py #  
+
+输出结果：  
+
+Plaintext  
+usage: scheduled.py [-h] [--data0 DATA0] [--fromdate FROMDATE]  
+                    [--todate TODATE] [--cerebro kwargs] [--broker  
+kwargs]  
+                    [--sizer kwargs] [--strat kwargs] [--plot  
+[kwargs]]  
+  
+Sample Skeleton  
+  
+optional arguments:  
+  -h, --help           show this help message and exit  
+  --data0 DATA0        Data to read in (default:  
+                        ../../datas/2005-2006-day-001.txt)  
+  --fromdate FROMDATE  Date[time] in YYYY-MM-DD[THH:MM:SS] format  
+(default: )  
+  --todate TODATE      Date[time] in YYYY-MM-DD[THH:MM:SS] format  
+(default: )  
+  --cerebro kwargs     kwargs in key=value format (default: )  
+  --broker kwargs      kwargs in key=value format (default: )  
+  --sizer kwargs       kwargs in key=value format (default: )  
+  --strat kwargs       kwargs in key=value format (default: )  
+  --plot [kwargs]      kwargs in key=value format (default: )  
+
+示例源代码 scheduled.py #  
+
+  
+﻿  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class St(bt.Strategy):  
+    params = dict(  
+        when=bt.timer.SESSION_START,  
+        timer=True,  
+        cheat=False,  
+        offset=datetime.timedelta(),  
+        repeat=datetime.timedelta(),  
+        weekdays=[],  
+    )  
+    def __init__(self):  
+        bt.ind.SMA()  
+        if self.p.timer:  
+            self.add_timer(  
+                when=self.p.when,  
+                offset=self.p.offset,  
+                repeat=self.p.repeat,  
+                weekdays=self.p.weekdays,  
+            )  
+        if self.p.cheat:  
+            self.add_timer(  
+                when=self.p.when,  
+                offset=self.p.offset,  
+                repeat=self.p.repeat,  
+                cheat=True,  
+            )  
+        self.order = None  
+    def prenext(self):  
+        self.next()  
+    def next(self):  
+        _, isowk, isowkday = self.datetime.date().isocalendar()  
+        txt =  '{}, {}, Week {}, Day {}, O {}, H {}, L {}, C  
+{}'.format(  
+            len(self), self.datetime.datetime(),  
+            isowk, isowkday,  
+            self.data.open[0], self.data.high[0],  
+            self.data.low[0], self.data.close[0])  
+        print(txt)  
+    def notify_timer(self, timer, when, *args, **kwargs):  
+
+  
+﻿  
+
+        print('strategy notify_timer with tid {}, when {} cheat  
+{}'.              format(timer .p.tid, when, timer.p.cheat))  
+        if self.order is None and timer.p.cheat:  
+            print('-- {} Create buy  
+order'.format(self .data.datetime.date()))  
+            self.order = self.buy()  
+    def notify_order(self, order):  
+        if order.status == order.Completed:  
+            print('-- {} Buy Exec @ {}'.format(  
+                self.data.datetime.date(), order.executed.price))  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+
+    # 数据源 kwargs    kwargs = dict(  
+        timeframe=bt.TimeFrame.Days,  
+        compression=1,  
+        sessionstart=datetime.time(9, 0),  
+        sessionend=datetime.time(17, 30),  
+    )  
+
+    # 解析 from/to-date    dtfmt, tmfmt =  '%Y-%m-%d', 'T%H:%M:%S'     
+for a, d in ((getattr(args, x), x) for x in ['fromdate',  
+'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+
+    # 数据源    data0 =  
+bt.feeds .BacktraderCSVData(dataname=args.data0, **kwargs)  
+    cerebro.adddata(data0)  
+
+    # 经纪人    cerebro.broker =  
+bt.brokers.BackBroker(**eval('dict(' + args.broker +  ')'))  
+
+    # 调整器    cerebro.addsizer(bt.sizers.FixedSize,  
+**eval('dict(' + args.sizer +  ')'))  
+
+    # 策略    cerebro.addstrategy(St, **eval('dict(' + args.strat  
++  ')'))  
+    # 执行    cerebro.run(**eval('dict(' + args.cerebro +  ')'))  
+
+    if args.plot:  # 如果请求则绘图         
+cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=(  
+             'Sample Skeleton'        )  
+    )  
+    parser.add_argument('--data0', default='../../datas/2005-2006- 
+
+  
+﻿  
+
+day-001.txt',  
+                        required=False, help='Data to read in')  
+
+    #  日期默认值    parser.add_argument('--fromdate',  
+required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--todate', required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--cerebro', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--broker', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--sizer', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--strat', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--plot', required=False, default='',  
+                        nargs='?', const='{}',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+示例源代码 scheduled-min.py #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class St(bt.Strategy):  
+    params = dict(  
+        when=bt.timer.SESSION_START,  
+        timer=True,  
+        cheat=False,  
+        offset=datetime.timedelta(),  
+
+  
+﻿  
+
+        repeat=datetime.timedelta(),  
+        weekdays=[],  
+        weekcarry=False,  
+        monthdays=[],  
+        monthcarry=True,  
+    )  
+    def __init__(self):  
+        bt.ind.SMA()  
+        if self.p.timer:  
+            self.add_timer(  
+                when=self.p.when,  
+                offset=self.p.offset,  
+                repeat=self.p.repeat,  
+                weekdays=self.p.weekdays,  
+                weekcarry=self.p.weekcarry,  
+                monthdays=self.p.monthdays,  
+                monthcarry=self.p.monthcarry,  
+                # tzdata=self.data0,            )  
+        if self.p.cheat:  
+            self.add_timer(  
+                when=self.p.when,  
+                offset=self.p.offset,  
+                repeat=self.p.repeat,  
+                weekdays=self.p.weekdays,  
+                weekcarry=self.p.weekcarry,  
+                monthdays=self.p.monthdays,  
+                monthcarry=self.p.monthcarry,  
+                # tzdata=self.data0,                cheat=True,  
+            )  
+        self.order = None  
+    def prenext(self):  
+        self.next()  
+    def next(self):  
+        _, isowk, isowkday = self.datetime.date().isocalendar()  
+        txt =  '{}, {}, Week {}, Day {}, O {}, H {}, L {}, C  
+{}'.format(  
+            len(self), self.datetime.datetime(),  
+            isowk, isowkday,  
+            self.data.open[0], self.data.high[0],  
+            self.data.low[0], self.data.close[0])  
+        print(txt)  
+    def notify_timer(self, timer, when, *args, **kwargs):  
+        print('strategy notify_timer with tid {}, when {} cheat  
+{}'.              format(timer .p.tid, when, timer.p.cheat))  
+
+  
+﻿  
+
+        if self.order is None and timer.params.cheat:  
+            print('-- {} Create buy order'.format(  
+                self.data.datetime.datetime()))  
+            self.order = self.buy()  
+    def notify_order(self, order):  
+        if order.status == order.Completed:  
+            print('-- {} Buy Exec @ {}'.format(  
+                self.data.datetime.datetime(),  
+order.executed.price))  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    # 数据源 kwargs    kwargs = dict(  
+        timeframe=bt.TimeFrame.Minutes,  
+        compression=5,  
+        sessionstart=datetime.time(9, 0),  
+        sessionend=datetime.time(17, 30),  
+    )  
+    # 解析 from/to-date    dtfmt, tmfmt =  '%Y-%m-%d', 'T%H:%M:%S'     
+for a, d in ((getattr(args, x), x) for x in ['fromdate',  
+'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+    # 数据源    data0 =  
+bt.feeds .BacktraderCSVData(dataname=args.data0, **kwargs)  
+    cerebro.adddata(data0)  
+    # 经纪人    cerebro.broker =  
+bt.brokers.BackBroker(**eval('dict(' + args.broker +  ')'))  
+    # 调整器    cerebro.addsizer(bt.sizers.FixedSize,  
+**eval('dict(' + args.sizer +  ')'))  
+    # 策略    cerebro.addstrategy(St, **eval('dict(' + args.strat  
++  ')'))  
+    # 执行    cerebro.run(**eval('dict(' + args.cerebro +  ')'))  
+
+    if args.plot:  # 如果请求则绘图         
+cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=(  
+             'Timer Test Intraday'        )  
+    )  
+    parser.add_argument('--data0', default='../../datas/2006-min- 
+005.txt',  
+
+  
+﻿  
+
+                        required=False, help='Data to read in')  
+    #  日期默认值    parser.add_argument('--fromdate',  
+required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--todate', required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--cerebro', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--broker', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--sizer', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--strat', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--plot', required=False, default='',  
+                        nargs='?', const='{}',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+Datetime-交易日历  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:36:55 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+版本  1.9.42.116 增加了对交易日历的支持。这在以下场景中的重采样时非常有用：  
+
+•   从每日到每周的重采样现在可以将每周的 K 线与本周的最后一根 K 线一起交付。  
+
+•   这是因为交易日历可以识别下一个交易日，并且可以提前识别出本周的最后一个 
+
+交易日。  
+
+•   当交易会话的结束时间不是常规时间（可以通过数据源来指定）时，从子日内到 
+
+每日的重采样。  
+
+  
+﻿  
+
+交易日历接口 #  
+
+有一个基类 TradingCalendarBase 用作任何交易日历的基类。它定义了两个必须被 
+
+重写的方法：  
+
+Python  
+class TradingCalendarBase(with_metaclass(MetaParams, object)):  
+    def _nextday(self, day):  
+         '''  
+        返回在 `day` （datetime/date 实例）之后的下一个交易日 
+
+ （datetime/date 实例）以及 isocalendar 组件。  
+
+        返回值是一个包含两个组件的元组： (nextday, (y, w, d))，其中  
+
+(y, w, d)。  
+         '''        raise NotImplementedError  
+    def schedule(self, day):  
+         '''  
+        返回给定日期（datetime/date 实例）的开盘和收盘时间 
+
+ （`datetime.time`）。  
+         '''        raise NotImplementedError  
+
+实现 #  
+
+PandasMarketCalendar #  
+
+这个实现基于一个不错的包，这是从 Quantopian 的初始功能衍生出来的。包位于  
+
+pandas_market_calendars  ，可以很容易地安装：  
+
+Bash  
+pip install pandas_market_calendars  
+
+实现的接口如下：  
+
+Python  
+class PandasMarketCalendar(TradingCalendarBase):  
+     '''  
+
+    `pandas_market_calendars` 的交易日历包装器。必须安装  
+
+`pandas_market_calendar` 包。  
+
+    参数：  
+
+      - `calendar` (默认 `None`)  
+
+        参数 `calendar` 接受以下内容：  
+
+        - 字符串：支持的日历名称，例如 `NYSE`。包装器会尝试获取一个日历 
+
+实例。  
+
+  
+﻿  
+
+        -  日历实例：由 `get_calendar('NYSE')` 返回。  
+
+      - `cachesize` (默认 `365`)  
+
+        缓存查找提前天数。  
+
+    参见：  
+      - https://github.com/rsheftel/pandas_market_calendars  
+      - http://pandas-market-calendars.readthedocs.io/  
+     '''    params = (  
+        ('calendar', None),  # 一个 pandas_market_calendars 实例或 
+
+交易所名称        ('cachesize', 365),  # 缓存查找提前天数    )  
+
+TradingCalendar #  
+
+这个实现允许通过指定假期、早市天数、非交易工作日以及开盘和收盘时间来构建一 
+
+个日历：  
+
+Python  
+class TradingCalendar(TradingCalendarBase):  
+     '''  
+    交易日历的包装器。必须安装 `pandas_market_calendars` 包。  
+
+    参数：  
+
+      - `open` (默认 `time.min`)  
+
+        常规开盘时间。  
+
+      - `close` (默认 `time.max`)  
+
+        常规收盘时间。  
+
+      - `holidays` (默认 `[]`)  
+
+        非交易日列表（`datetime.datetime` 实例）。  
+
+      - `earlydays` (默认 `[]`)  
+
+        确定日期和开盘/收盘时间的不符合常规交易时间的天数列表，每个元组 
+
+包含 (`datetime.datetime`, `datetime.time`, `datetime.time`)。  
+
+      - `offdays` (默认 `ISOWEEKEND`)  
+
+        一周中市场不交易的工作日的 ISO 格式列表（周一：1 -> 周日：7）。 
+
+这通常是周六和周日，因此为默认值。  
+     '''    params = (  
+        ('open', time.min),  
+        ('close', _time_max),  
+        ('holidays', []),  # 非交易日列表（日期）         
+
+('earlydays', []),  # 元组列表（日期，开盘时间，收盘时间）         
+
+('offdays', ISOWEEKEND),  # 非交易日列表（ISO 工作日）    )  
+
+使用模式 #  
+
+  
+﻿  
+
+全局交易日历 #  
+
+通过 Cerebro  ，可以添加一个全局日历，作为所有数据源的默认日历，除非为数据源 
+
+指定了一个日历：  
+
+Python  
+def addcalendar(self, cal):  
+     '''向系统添加全局交易日历。个别数据源可以有单独的日历覆盖全局日历。  
+
+    `cal` 可以是 `TradingCalendar` 的一个实例、一个字符串或一个  
+
+`pandas_market_calendars` 的实例。字符串将被实例化为  
+
+`PandasMarketCalendar` （需要在系统中安装 `pandas_market_calendar` 模 
+
+块）。  
+
+    如果传递的是 `TradingCalendarBase` 的子类（而不是实例），则会被实例 
+
+化。  
+     '''  
+
+每个数据源 #  
+
+通过指定一个 calendar 参数，遵循与上面描述的 addcalendar 相同的约定。例如：  
+
+Python  
+...data = bt.feeds .YahooFinanceData(dataname='YHOO',  
+calendar='NYSE', ...)  
+cerebro.adddata(data)  
+...  
+
+示例 #  
+
+从每日到每周 #  
+
+让我们看一个示例代码的运行结果。2016 年的复活节星期五（2016-03-25）也是纽约 
+
+证券交易所的假期。如果运行没有交易日历的示例代码，让我们看看该日期前后的情 
+
+况。  
+
+在这种情况下，重采样是从每日到每周（使用 YHOO 和 2016 年的每日数据）：  
+
+Bash  
+$ ./tcal.py  
+...  
+Strategy len 56 datetime 2016-03-23 Data0 len 56 datetime 2016-03- 
+23 Data1 len 11 datetime 2016-03-18  
+Strategy len 57 datetime 2016-03-24 Data0 len 57 datetime 2016-03- 
+
+  
+﻿  
+
+24 Data1 len 11 datetime 2016-03-18  
+Strategy len 58 datetime 2016-03-28 Data0 len 58 datetime 2016-03- 
+28 Data1 len 12 datetime 2016-03-24  
+...  
+
+在这个输出中，第一个日期是由策略计算的日期。第二个日期是每日数据的日期。  
+
+如预期的那样，周在 2016-03-24            （星期四）结束，但是由于没有交易日历，重采样代 
+
+码无法知道这一点，并且会在 2016-03-18                （前一周）的日期交付重采样条形图。当交 
+
+易移至 2016-03-28     （星期一）时，重采样器检测到周变化，并在 2016-03-24 交付一 
+
+个重采样条形图。  
+
+如果使用 NYSE 的 PandasMarketCalendar 并添加一个绘图，再次运行：  
+
+Bash  
+$ ./tcal.py --plot --pandascal NYSE  
+...  
+Strategy len 56 datetime 2016-03-23 Data0 len 56 datetime 2016-03- 
+23 Data1 len 11 datetime 2016-03-18  
+Strategy len 57 datetime 2016-03-24 Data0 len 57 datetime 2016-03- 
+24 Data1 len 12 datetime 2016-03-24  
+Strategy len 58 datetime 2016-03-28 Data0 len 58 datetime 2016-03- 
+28 Data1 len 12 datetime 2016-03-24  
+...  
+
+有所变化！由于有日历，重采样器知道周在 2016-03-24 结束，并在同一天交付相应的 
+
+每周重采样条形图。  
+
+绘图结果如下。  
+
+image  
+
+由于某些信息可能并不总是可用，可以手动编写日历。对于 NYSE 和 2016 年，日历 
+
+定义如下：  
+
+Python  
+class NYSE_2016(bt.TradingCalendar):  
+    params = dict(  
+        holidays=[  
+            datetime.date(2016, 1, 1),  
+            datetime.date(2016, 1, 18),  
+            datetime.date(2016, 2, 15),  
+            datetime.date(2016, 3, 25),  
+            datetime.date(2016, 5, 30),  
+            datetime.date(2016, 7, 4),  
+            datetime.date(2016, 9, 5),  
+
+  
+﻿  
+
+            datetime.date(2016, 11, 24),  
+            datetime.date(2016, 12, 26),  
+        ]  
+    )  
+
+复活节星期五（2016-03-25）被列为假期之一。现在运行示例代码：  
+
+Bash  
+$ ./tcal.py --plot --owncal  
+...  
+Strategy len 56 datetime 2016-03-23 Data0 len 56 datetime 2016-03- 
+23 Data1 len 11 datetime 2016-03-18  
+Strategy len 57 datetime 2016-03-24 Data0 len 57 datetime 2016-03- 
+24 Data1 len 12 datetime 2016-03-24  
+Strategy len 58 datetime 2016-03-28 Data0 len 58 datetime 2016-03- 
+28 Data1 len 12 datetime 201  
+6-03-24  
+...  
+
+使用手动编写的日历定义得到了相同的结果。  
+
+从分钟到每日 #  
+
+使用一些私有的日内数据，并且知道市场在 2016-11-25 提前收盘（感恩节后的第二天 
+
+市场在美国东部时间  13:00 收盘），再进行一个测试运行，这次使用第二个示例。  
+
+注意  
+
+源数据直接来自显示数据，并且在 CET 时区，即使标的资产 YHOO 在美国交易。代 
+
+码中使用了 tzinput='CET' 和 tz='US/Eastern' 来让平台适当地转换输入并显示输 
+
+出。  
+
+首先，不使用交易日历：  
+
+Bash  
+$ ./tcal-intra.py  
+...  
+Strategy len 6838 datetime 2016-11-25 18:00:00 Data0 len 6838  
+datetime 2016-11-25 13:00:00 Data1 len 21 datetime 2016-11-23  
+16:00:00  
+Strategy len 6839 datetime 2016-11-25 18:01:00 Data0 len 6839  
+datetime 2016-11-25 13:01:00 Data1 len 21 datetime 20 16-11-23  
+16:00:00  
+Strategy len 6840 datetime 2016-11-28 14:31:00 Data0 len 6840  
+datetime 2016-11-28 09:31:00 Data1 len 22 datetime 2016-11-25  
+
+  
+﻿  
+
+16:00:00  
+Strategy len 6841 datetime 2016-11-28 14:32:00 Data0 len 6841  
+datetime 2016-11-28 09:32:00 Data1 len 22 datetime 2016-11-25  
+16:00:00  
+...  
+
+如预期的那样，这一天在  13:00 提前结束，但重采样器不知道这一点（官方会话在  
+
+16:00 结束），并继续交付前一天（2016-11-23）的重采样日线图，新重采样日线图首 
+
+次在下一个交易日（2016-11-28）交付，日期为 2016-11-25 。  
+
+注意  
+
+数据在  13:01 有一个额外的分钟条，这可能是由于拍卖过程中在市场关闭时间后提供 
+
+的最后价格。  
+
+我们可以向流中添加一个过滤器，以过滤掉会话时间之外的条形图（过滤器将从交易 
+
+日历中找出时间）。  
+
+但这不是此示例的重点。  
+
+使用 PandasMarketCalendar 实例再次运行：  
+
+Bash  
+$ ./tcal-intra.py --pandascal NYSE  
+...  
+Strategy len 6838 datetime 2016-11-25 18:00:00 Data0 len 6838  
+datetime 2016-11-25 13:00:00 Data1 len 15 datetime 2016-11-25  
+13:00:00  
+Strategy len 6839 datetime 2016-11-25 18:01:00 Data0 len 6839  
+datetime 2016-11-25 13:01:00 Data1 len 15 datetime 2016-11-25  
+13:00:00  
+Strategy len 6840 datetime 2016-11-28 14:31:00 Data0 len 6840  
+datetime 2016-11-28 09:31:00 Data1 len 15 datetime 2016-11-25  
+13:00:00  
+Strategy len 6841 datetime 2016-11-28 14:32:00 Data0 len 6841  
+datetime 2016-11-28 09:32:00 Data1 len 15 datetime 2016-11-25  
+13:00:00  
+...  
+
+现在，当日线条在 2016-11-25 的  13:00 交付时（忽略  13:01 的条形图），重采样代码 
+
+通过交易日历知道这一天结束了。  
+
+让我们添加一个手动编写的定义。与前面的相同，但扩展了一些早市天数：  
+
+Python  
+class NYSE_2016(bt.TradingCalendar):  
+
+  
+﻿  
+
+    params = dict(  
+        holidays=[  
+            datetime.date(2016, 1, 1),  
+            datetime.date(2016, 1, 18),  
+            datetime.date(2016, 2, 15),  
+            datetime.date(2016, 3, 25),  
+            datetime.date(2016, 5, 30),  
+            datetime.date(2016, 7, 4),  
+            datetime.date(2016, 9, 5),  
+            datetime.date(2016, 11, 24),  
+            datetime.date(2016, 12, 26),  
+        ],  
+        earlydays=[  
+            (datetime.date(2016, 11, 25),  
+             datetime.time(9, 30), datetime .time(13, 1))  
+        ],  
+        open=datetime.time(9, 30),  
+        close=datetime.time(16, 0),  
+    )  
+
+运行：  
+
+Bash  
+$ ./tcal-intra.py --owncal  
+...  
+Strategy len 6838 datetime 2016-11-25 18:00:00 Data0 len 6838  
+datetime 2016-11-25 13:00:00 Data1 len 16 datetime 2016-11-25  
+13:01:00  
+Strategy len 6839 datetime 2016-11-25 18:01:00 Data0 len 6839  
+datetime 2016-11-25 13:01:00 Data1 len 16 datetime 2016-11-25  
+13:01:00  
+Strategy len 6840 datetime 2016-11-28 14:31:00 Data0 len 6840  
+datetime 2016-11-28 09:31:00 Data1 len 16 datetime 2016-11-25  
+13:01:00  
+Strategy len 6841 datetime 2016-11-28 14:32:00 Data0 len 6841  
+datetime 2016-11-28 09:32:00 Data1 len 16 datetime 2016-11-25  
+13:01:00  
+...  
+
+细心的读者会注意到手动编写的定义将 2016-11-25 的结束时间定义为  13:01                                （使用  
+
+datetime.time(13, 1) ）。这只是为了展示手动编写的 TradingCalendar 如何帮助 
+
+适应。  
+
+现在 2016-11-25 的重采样日线条在  13:01 与  1 分钟条一起交付。  
+
+  
+﻿  
+
+策略的额外奖励 #  
+
+第一个日期时间，属于策略的，总是在不同的时区，实际上是 UTC。使用这个版本  
+
+1.9.42.116，这也可以同步。以下参数已添加到 Cerebro                （在实例化期间使用或与  
+
+cerebro.run 一起使用：  
+
+•   tz  （默认： None ）  
+
+•   添加策略的全局时区。参数 tz 可以是：  
+
+    ￮   None  ：在这种情况下，策略显示的日期时间将是 UTC，这一直是标准行为。  
+
+    ￮   pytz 实例。它将用于将 UTC 时间转换为所选时区。  
+
+    ￮   string  。尝试实例化一个 pytz 实例。  
+
+    ￮   integer  。使用相应数据在 self.datas 可迭代对象中的相同时区（ 0 将使 
+
+    用 data0  的时区）。  
+
+也可以通过 cerebro.addtz 方法支持：  
+
+Python  
+def addtz(self, tz):  
+     '''  
+    这也可以通过参数 `tz` 完成。  
+      
+    添加策略的全局时区。参数 `tz` 可以是：  
+      
+
+      - `None`：在这种情况下，策略显示的日期时间将是 UTC，这一直是标准 
+
+行为。  
+
+      - `pytz` 实例。它将用于将 UTC 时间转换为所选时区。  
+
+      - `string`。尝试实例化一个 `pytz` 实例。  
+
+      - `integer`。使用相应数据在 `self.datas` 可迭代对象中的相同时区 
+
+ （`0` 将使用 `data0` 的时区）。  
+     '''  
+
+重复上一次的日内示例运行，并使用 0 作为 tz                 （与 data0 的时区同步），输出如下，关 
+
+注与上面相同的日期和时间：  
+
+Bash  
+$ ./tcal-intra.py --owncal --cerebro tz=0  
+...  
+Strategy len 6838 datetime 2016-11-25 13:00:00 Data0 len 6838  
+datetime 2016-11-25 13:00:00 Data1 len 15 datetime 2016-11-23  
+16:00:00  
+
+  
+﻿  
+
+Strategy len 6839 datetime 2016-11-25 13:01:00 Data0 len 6839  
+datetime 2016-11-25 13:01:00 Data1 len 16 datetime 2016-11-25  
+13:01:00  
+Strategy len 6840 datetime 2016-11-28 09:31:00 Data0 len 6840  
+datetime 2016-11-28 09:31:00 Data  
+1 len 16 datetime 2016-11-25 13:01:00  
+Strategy len 6841 datetime 2016-11-28 09:32:00 Data0 len 6841  
+datetime 2016-11-28 09:32:00 Data1 len 16 datetime 2016-11-25  
+13:01:00  
+...  
+
+时间戳现在与时区对齐。  
+
+示例使用（tcal.py） #  
+
+Bash  
+$ ./tcal.py --help  
+usage: tcal.py [-h] [--data0 DATA0] [--offline] [--fromdate  
+FROMDATE]               [--todate TODATE] [--cerebro kwargs] [-- 
+broker kwargs]               [--sizer kwargs] [--strat kwargs] [-- 
+plot [kwargs]]               [--pandascal PANDASCAL | --owncal]                
+[--timeframe {Weeks,Months,Years}]  
+Trading Calendar Sample  
+optional arguments:  
+  -h, --help            show this help message and exit  
+  --data0 DATA0         Data to read in (default: YHOO)  --offline              
+Read from disk with same name as ticker (default: False)  -- 
+fromdate FROMDATE   Date[time] in YYYY-MM-DD[THH:MM:SS] format  
+(default: 2016-01-01)  --todate TODATE       Date[time] in YYYY- 
+MM-DD[THH:MM:SS] format (default: 2016-12-31)  --cerebro kwargs       
+kwargs in key=value format (default: )  --broker kwargs        
+kwargs in key=value format (default: )  --sizer kwargs         
+kwargs in key=value format (default: )  --strat kwargs         
+kwargs in key=value format (default: )  --plot [kwargs]        
+kwargs in key=value format (default: )  --pandascal PANDASCAL Name  
+of trading calendar to use (default: )  --owncal               
+Apply custom NYSE 2016 calendar (default: False)  --timeframe  
+{Weeks,Months,Years} Timeframe to resample to (default: Weeks)  
+
+示例使用（tcal-intra.py） #  
+
+Bash  
+
+  
+﻿  
+
+$ ./tcal-intra.py --help  
+usage: tcal-intra.py [-h] [--data0 DATA0] [--fromdate FROMDATE]                      
+[--todate TODATE] [--cerebro kwargs] [--broker kwargs]                      
+[--sizer kwargs] [--strat kwargs] [--plot [kwargs]]                      
+[--pandascal PANDASCAL | --owncal] [--timeframe {Days}]  
+Trading Calendar Sample  
+optional arguments:  
+  -h, --help            show this help message and exit  
+  --data0 DATA0         Data to read in (default: yhoo-2016- 
+11.csv)  --fromdate FROMDATE   Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format (default: 2016-01-01)  --todate TODATE       Date[time] in  
+YYYY-MM-DD[THH:MM:SS] format (default: 2016-12-31)  --cerebro  
+kwargs      kwargs in key=value format (default: )  --broker  
+kwargs       kwargs in key=value format (default: )  --sizer  
+kwargs        kwargs in key=value format (default: )  --strat  
+kwargs        kwargs in key=value format (default: )  --plot  
+[kwargs]       kwargs in key=value format (default: )  --pandascal  
+PANDASCAL Name of trading calendar to use (default: )  --owncal               
+Apply custom NYSE 2016 calendar (default: False)  --timeframe  
+{Days}    Timeframe to resample to (default: Days)  
+
+示例代码（tcal.py） #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class NYSE_2016(bt.TradingCalendar):  
+    params = dict(  
+        holidays=[  
+            datetime.date(2016, 1, 1),  
+            datetime.date(2016, 1, 18),  
+            datetime.date(2016, 2, 15),  
+            datetime.date(2016, 3, 25),  
+            datetime.date(2016, 5, 30),  
+            datetime.date(2016, 7, 4),  
+            datetime.date(2016, 9, 5),  
+            datetime.date(2016, 11, 24),  
+            datetime.date(2016, 12, 26),  
+        ]  
+    )  
+
+  
+﻿  
+
+class St(bt.Strategy):  
+    params = dict()  
+    def __init__(self):  
+        pass  
+    def start(self):  
+        self.t0 = datetime.datetime.utcnow()  
+    def stop(self):  
+        t1 = datetime.datetime.utcnow()  
+        print('Duration:', t1 - self.t0)  
+    def prenext(self):  
+        self.next()  
+    def next(self):  
+        print('Strategy len {} datetime {}'.format(len(self),  
+self.datetime.date()), end=' ')  
+        print('Data0 len {} datetime {}'.format(len(self .data0),  
+self.data0.datetime.date()), end=' ')  
+        if len(self.data1):  
+            print('Data1 len {} datetime  
+{}'.format(len(self .data1), self.data1.datetime.date()))  
+        else:  
+            print()  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+
+    # 数据源参数    kwargs = dict()  
+
+    # 解析 from/to  日期    dtfmt, tmfmt =  '%Y-%m-%d', 'T%H:%M:%S'     
+for a, d in ((getattr(args, x), x) for x in ['fromdate',  
+'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+    YahooData = bt.feeds .YahooFinanceData  
+    if args.offline:  
+        YahooData = bt.feeds .YahooFinanceCSVData  # 切换为从文件读 
+
+取  
+
+    # 数据源    data0 = YahooData(dataname=args.data0, **kwargs)  
+    cerebro.adddata(data0)  
+    d1 = cerebro.resampledata(data0,  
+timeframe=getattr(bt.TimeFrame, args.timeframe))  
+    d1.plotinfo.plotmaster = data0  
+    d1.plotinfo.sameaxis = True  
+    if args.pandascal:  
+        cerebro.addcalendar(args.pandascal)  
+    elif args.owncal:  
+
+  
+﻿  
+
+        cerebro.addcalendar(NYSE_2016)  
+    # 经纪商    cerebro.broker =  
+bt.brokers.BackBroker(**eval('dict(' + args.broker +  ')'))  
+    # 大小调整器    cerebro.addsizer(bt.sizers.FixedSize,  
+**eval('dict(' + args.sizer +  ')'))  
+    # 策略    cerebro.addstrategy(St, **eval('dict(' + args.strat  
++  ')'))  
+    # 执行    cerebro.run(**eval('dict(' + args.cerebro +  ')'))  
+
+    if args.plot:  # 如果请求则绘图         
+cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=(  
+             'Trading Calendar Sample'        )  
+    )  
+    parser.add_argument('--data0', default='YHOO', required=False,  
+help='Data to read in')  
+    parser.add_argument('--offline', required=False,  
+action='store_true', help='Read from disk with same name as  
+ticker')  
+    #  日期默认值    parser.add_argument('--fromdate',  
+required=False, default='2016-01-01', help='Date[time] in YYYY-MM- 
+DD[THH:MM:SS] format')  
+    parser.add_argument('--todate', required=False, default='2016- 
+12-31', help='Date[time] in YYYY-MM-DD[THH:MM:SS] format')  
+    parser.add_argument('--cerebro', required=False, default='',  
+metavar='kwargs', help='kwargs in key=value format')  
+    parser.add_argument('--broker', required=False, default='',  
+metavar='kwargs', help='kwargs in key=value format')  
+    parser.add_argument('--sizer', required=False, default='',  
+metavar='kwargs', help='kwargs in key=value format')  
+    parser.add_argument('--strat', required=False, default='',  
+metavar='kwargs', help='kwargs in key=value format')  
+    parser.add_argument('--plot', required=False, default='',  
+nargs='?', const='{}', metavar='kwargs', help='kwargs in key=value  
+format')  
+    pgroup = parser.add_mutually_exclusive_group(required=False)  
+    pgroup.add_argument('--pandascal', required=False,  
+action='store', default='', help='Name of trading calendar to  
+use')  
+    pgroup.add_argument('--owncal', required=False,  
+action='store_true', help='Apply custom NYSE 2016 calendar')  
+    parser.add_argument('--timeframe', required=False,  
+
+  
+﻿  
+
+action='store', default='Weeks', choices=['Weeks', 'Months',  
+'Years'], help='Timeframe to resample to')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+示例代码（tcal-intra.py） #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class NYSE_2016(bt.TradingCalendar  
+):  
+    params = dict(  
+        holidays=[  
+            datetime.date(2016, 1, 1),  
+            datetime.date(2016, 1, 18),  
+            datetime.date(2016, 2, 15),  
+            datetime.date(2016, 3, 25),  
+            datetime.date(2016, 5, 30),  
+            datetime.date(2016, 7, 4),  
+            datetime.date(2016, 9, 5),  
+            datetime.date(2016, 11, 24),  
+            datetime.date(2016, 12, 26),  
+        ],  
+        earlydays=[  
+            (datetime.date(2016, 11, 25), datetime.time(9, 30),  
+datetime.time(13, 1))  
+        ],  
+        open=datetime.time(9, 30),  
+        close=datetime.time(16, 0),  
+    )  
+class St(bt.Strategy):  
+    params = dict()  
+    def __init__(self):  
+        pass  
+    def prenext(self):  
+        self.next()  
+    def next(self):  
+        print('Strategy len {} datetime {}'.format(len(self),  
+
+  
+﻿  
+
+self.datetime.datetime()), end=' ')  
+        print('Data0 len {} datetime {}'.format(len(self .data0),  
+self.data0.datetime.datetime()), end=' ')  
+        if len(self.data1):  
+            print('Data1 len {} datetime  
+{}'.format(len(self .data1), self.data1.datetime.datetime()))  
+        else:  
+            print()  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    # 数据源参数    # kwargs = dict(tz='US/Eastern')    # import  
+pytz    # tz = tzinput = pytz.timezone('Europe/Berlin')    tzinput  
+=  'Europe/Berlin'    # tz = tzinput    tz =  'US/Eastern'    kwargs  
+= dict(tzinput=tzinput, tz=tz)  
+
+    # 解析 from/to  日期    dtfmt, tmfmt =  '%Y-%m-%d', 'T%H:%M:%S'     
+for a, d in ((getattr(args, x), x) for x in ['fromdate',  
+'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+    # 数据源    data0 =  
+bt.feeds .BacktraderCSVData(dataname=args.data0, **kwargs)  
+    cerebro.adddata(data0)  
+    d1 = cerebro.resampledata(data0,  
+timeframe=getattr(bt.TimeFrame, args.timeframe))  
+    # d1.plotinfo.plotmaster = data0    # d1.plotinfo.sameaxis =  
+False  
+    if args.pandascal:  
+        cerebro.addcalendar(args.pandascal)  
+    elif args.owncal:  
+
+        cerebro.addcalendar(NYSE_2016())  # 或者 NYSE_2016() 传递一 
+
+个实例  
+
+    # 经纪商    cerebro.broker =  
+bt.brokers.BackBroker(**eval('dict(' + args.broker +  ')'))  
+
+    # 大小调整器    cerebro.addsizer(bt.sizers.FixedSize,  
+**eval('dict(' + args.sizer +  ')'))  
+
+    # 策略    cerebro.addstrategy(St, **eval('dict(' + args.strat  
++  ')'))  
+    # 执行    cerebro.run(**eval('dict(' + args.cerebro +  ')'))  
+
+    if args.plot:  # 如果请求则绘图         
+cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+
+  

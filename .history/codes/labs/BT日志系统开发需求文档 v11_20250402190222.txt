@@ -1,0 +1,40 @@
+stateDiagram-v2
+    [*] --> Created: 1. 策略创建订单 (strategy.buy/sell)
+
+    Created --> Submitted: 2. 提交给Broker (cerebro -> broker.submit)
+    Submitted --> Accepted: 3a. Broker接受订单 (broker.accept)
+    Submitted --> Rejected: 3b. Broker拒绝 (broker.reject - 初始检查)
+
+    Accepted --> Partial: 4a. Broker部分执行 (broker -> order.execute, remsize > 0)
+    Accepted --> Completed: 4b. Broker完全执行 (broker -> order.execute, remsize == 0)
+    Accepted --> Canceled: 4c. 策略取消 (strategy.cancel -> broker.cancel -> order.cancel)
+    Accepted --> Expired: 4d. 订单过期 (broker checks valid -> order.expire)
+    Accepted --> Margin: 4e. 保证金不足 (broker checks margin -> order.margin)
+    Accepted --> Rejected: 4f. Broker拒绝 (broker.reject - 执行前检查)
+
+    Partial --> Partial: 5a. Broker继续部分执行 (broker -> order.execute, remsize > 0)
+    Partial --> Completed: 5b. Broker执行剩余部分 (broker -> order.execute, remsize == 0)
+    Partial --> Canceled: 5c. 策略取消 (strategy.cancel -> broker.cancel -> order.cancel)
+    Partial --> Expired: 5d. 订单过期 (broker checks valid -> order.expire)
+    Partial --> Margin: 5e. 保证金不足 (broker checks margin -> order.margin)
+    Partial --> Rejected: 5f. Broker拒绝 (broker.reject - 执行前检查)
+
+    Completed --> [*]: 6a. 最终状态 (成功)
+    Canceled --> [*]: 6b. 最终状态 (取消)
+    Expired --> [*]: 6c. 最终状态 (过期)
+    Margin --> [*]: 6d. 最终状态 (保证金不足)
+    Rejected --> [*]: 6e. 最终状态 (拒绝)
+
+    note right of Created
+        订单对象被实例化
+    end note
+    note left of Submitted
+        订单等待Broker处理
+    end note
+    note right of Accepted
+        <font color='blue'>订单在市场中生效，等待成交</font>
+    end note
+    note right of Partial
+        <font color='red'>订单部分成交，
+        剩余部分仍在市场中等待</font>
+    end note

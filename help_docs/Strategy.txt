@@ -1,0 +1,522 @@
+﻿  
+
+             'StopTrail Sample'        )  
+    )  
+    parser.add_argument('--data0', default='../../datas/2005-2006- 
+day-001.txt',  
+                        required=False, help='Data to read in')  
+    # Defaults for dates    parser .add_argument('--fromdate',  
+required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--todate', required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--cerebro', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--broker', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add.argument('--sizer', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add.argument('--strat', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add.argument('--plot', required=False, default='',  
+                        nargs='?', const='{}',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+Strategy-Strategy  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:36:53 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+在 backtrader 中，Cerebro 实例是整个系统的核心，而 Strategy 是用户的核心。  
+
+Strategy-信号策略  
+
+  
+﻿  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:36:41 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+使用 backtrader 进行操作不一定非得编写一个策略类。虽然这是首选方式，但由于对 
+
+象层次结构的原因，使用信号也是可行的。  
+
+快速总结： #  
+
+•   不需要编写策略类、实例化指标、编写买卖逻辑等。  
+
+•   添加信号（无论如何也是指标），其余部分在后台完成。  
+
+快速示例： #  
+
+Python  
+import backtrader as bt  
+data = bt.feeds .OneOfTheFeeds(dataname='mydataname')  
+cerebro.adddata(data)  
+cerebro.add_signal(bt.SIGNAL_LONGSHORT, MySignal)  
+cerebro.run()  
+
+这就完成了。当然，信号本身还没有定义。  
+
+让我们定义一个非常简单的信号：  
+
+•   如果收盘价高于简单移动平均线 (SMA)，则发出多头信号。  
+
+•   如果收盘价低于 SMA ，则发出空头信号。  
+
+定义如下：  
+
+Python  
+class MySignal(bt.Indicator):  
+    lines = ('signal',)  
+    params = (('period', 30),)  
+    def __init__(self):  
+        self.lines.signal = self.data -  
+bt.indicators.SMA(period=self.p.period)  
+
+现在真的完成了。  
+
+当运行  run  时，Cerebro 会处理实例化一个特殊的策略实例，它知道如何处理这些信 
+
+号。  
+
+  
+﻿  
+
+常见问题 #  
+
+买卖操作的数量是如何确定的？  
+
+Cerebro 实例自动为策略添加一个固定大小 (FixedSize) 的定量器。最终用户可以通过  
+
+cerebro.addsizer 更改定量器以改变策略。  
+
+订单是如何执行的？  
+
+执行类型为市价单，订单的有效期为“直到取消” (Good Until Canceled) 。  
+
+信号细节 #  
+
+从技术和理论角度来看，可以描述为：  
+
+•  一个可调用对象，当被调用时返回另一个对象（只调用一次）。  
+
+•  在大多数情况下，这是一个类的实例化，但不一定非得是。  
+
+•  支持 __getitem__ 接口。唯一请求的键/ 索引将是 0 。  
+
+从实际角度来看，信号是：  
+
+•  来自 backtrader 生态系统的 lines 对象，主要是指标。  
+
+这在使用其他指标时很有帮助，比如示例中的简单移动平均线。  
+
+信号指示 #  
+
+信号在使用 signal[0] 查询时提供指示，含义如下：  
+
+•  > 0 -> 多头指示  
+
+•  < 0 -> 空头指示  
+
+•  == 0 -> 无指示  
+
+示例中，简单地用 self.data - SMA 进行算术运算：  
+
+•   当数据高于 SMA 时发出多头指示。  
+
+•   当数据低于 SMA 时发出空头指示。  
+
+注意  ，当未为数据指示特定价格字段时，默认参考价格为收盘价。  
+
+信号类型 #  
+
+如下示例中的常量，直接从主 backtrader 模块获取：  
+
+Python  
+import backtrader as bt  
+
+  
+﻿  
+
+bt.SIGNAL_LONG  
+
+有 5 种类型的信号，分为 2 组。  
+
+主要组 #  
+
+LONGSHORT  ：接受来自该信号的多头和空头指示。  
+
+LONG  ：  
+
+接受多头指示进行做多。  
+
+接受空头指示平仓多头。但：  
+
+•  如果系统中有  LONGEXIT 信号，将用它来平仓多头。  
+
+•  如果有 SHORT 信号且没有  LONGEXIT 信号，它将被用来平仓多头再开空头。  
+
+SHORT  ：  
+
+接受空头指示进行做空。 接受多头指示平仓空头。但：  
+
+•  如果系统中有 SHORTEXIT 信号，将用它来平仓空头。  
+
+•  如果有  LONG 信号且没有 SHORTEXIT 信号，它将被用来平仓空头再开多头。  
+
+退出组 #  
+
+这两个信号旨在覆盖其他信号，并为平仓提供标准。  
+
+•  LONGEXIT  ：接受空头指示平仓多头。  
+
+•  SHORTEXIT  ：接受多头指示平仓空头。  
+
+累积和订单并发 #  
+
+上面展示的示例信号会不断发出多头和空头指示，因为它只是简单地用收盘价减去  
+
+SMA 值，这总是会得到 > 0 或 < 0 的结果（0 在数学上是可能的，但实际发生的可能 
+
+性很小）。  
+
+这将导致连续生成订单，从而产生两种情况：  
+
+•  累积  ：即使已经在市场中，信号也会产生新订单，增加市场仓位。  
+
+•  并发  ：在其他订单执行之前会生成新订单。  
+
+为了避免这种情况，默认行为是：  
+
+•  不累积。  
+
+•  不允许并发。  
+
+如果需要其中任何一种行为，可以通过 Cerebro 控制：  
+
+  
+﻿  
+
+Python  
+cerebro.signal_accumulate(True)  # 或 False 禁用 
+
+cerebro.signal_concurrency(True)  # 或 False 禁用  
+
+示例 #  
+
+backtrader 源代码包含一个测试功能的示例。  
+
+主要信号如下：  
+
+Python  
+class SMACloseSignal(bt.Indicator):  
+    lines = ('signal',)  
+    params = (('period', 30),)  
+    def __init__(self):  
+        self.lines.signal = self.data -  
+bt.indicators.SMA(period=self.p.period)  
+
+如果指定了退出信号，代码如下：  
+
+Python  
+class SMAExitSignal(bt.Indicator):  
+    lines = ('signal',)  
+    params = (('p1', 5), ('p2', 30),)  
+    def __init__(self):  
+        sma1 = bt.indicators.SMA(period=self.p.p1)  
+        sma2 = bt.indicators.SMA(period=self.p.p2)  
+        self.lines.signal = sma1 - sma2  
+
+第一次运行：多头和空头  
+
+Shell  
+$ ./signals-strategy.py --plot --signal longshort  
+
+输出：  
+
+•   信号被绘制。因为它只是一个指标，所以适用绘图规则。  
+
+•   策略确实做多和做空。因为现金水平从未回到价值水平。  
+
+第二次运行：仅多头  
+
+Shell  
+$ ./signals-strategy.py --plot --signal longonly  
+
+  
+﻿  
+
+输出：  
+
+•   现金水平在每次卖出后回到价值水平，说明策略在市场之外。  
+
+第三次运行：仅空头  
+
+Shell  
+$ ./signals-strategy.py --plot --signal shortonly  
+
+输出：  
+
+•   第一次操作是卖出，发生在收盘价低于 SMA 且简单减法得到负值之后。  
+
+•   现金水平在每次买入后回到价值水平，说明策略在市场之外。  
+
+第四次运行：多头 + 多头退出  
+
+Shell  
+$ ./signals-strategy.py --plot --signal longonly --exitsignal  
+longexit  
+
+输出：  
+
+•   许多交易是相同的，但一些较早被中断，因为退出信号中的快速移动平均线向下 
+
+穿过慢速移动平均线。  
+
+•   系统显示其仅做多特性，每笔交易结束时现金成为价值。  
+
+使用方法 #  
+
+Shell  
+$ ./signals-strategy.py --help  
+
+完整示例 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import collections  
+import datetime  
+import backtrader as bt  
+MAINSIGNALS = collections.OrderedDict(  
+    (('longshort', bt.SIGNAL_LONGSHORT),  
+     ('longonly', bt.SIGNAL_LONG),  
+     ('shortonly', bt.SIGNAL_SHORT),)  
+
+  
+﻿  
+
+)  
+EXITSIGNALS = {  
+     'longexit': bt.SIGNAL_LONGEXIT,  
+     'shortexit': bt.SIGNAL_LONGEXIT,  
+}  
+class SMACloseSignal(bt.Indicator):  
+    lines = ('signal',)  
+    params = (('period', 30),)  
+    def __init__(self):  
+        self.lines.signal = self.data -  
+bt.indicators.SMA(period=self.p.period)  
+class SMAExitSignal(bt.Indicator):  
+    lines = ('signal',)  
+    params = (('p1', 5), ('p2', 30),)  
+    def __init__(self):  
+        sma1 = bt.indicators.SMA(period=self.p.p1)  
+        sma2 = bt.indicators.SMA(period=self.p.p2)  
+        self.lines.signal = sma1 - sma2  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    cerebro.broker.set_cash(args.cash)  
+    dkwargs = dict()  
+    if args.fromdate is not None:  
+        fromdate = datetime.datetime.strptime(args.fromdate,  '%Y- 
+%m-%d')  
+        dkwargs['fromdate'] = fromdate  
+    if args.todate is not None:  
+        todate = datetime.datetime.strptime(args.todate,  '%Y-%m- 
+%d')  
+        dkwargs['todate'] = todate  
+    data = bt.feeds .BacktraderCSVData(dataname=args.data,  
+**dkwargs)  
+    cerebro.adddata(data)  
+    cerebro.add_signal(MAINSIGNALS[args.signal],  
+                       SMACloseSignal, period=args.smaperiod)  
+    if args.ex  
+itsignal is not None:  
+        cerebro.add_signal(EXITSIGNALS[args.exitsignal],  
+                           SMAExitSignal,  
+                           p1=args.exitperiod,  
+                           p2=args.smaperiod)  
+    cerebro.run()  
+    if args.plot:  
+
+  
+﻿  
+
+        pkwargs = dict(style='bar')  
+        if args.plot is not True:  
+            npkwargs = eval('dict(' + args.plot +  ')')  
+            pkwargs.update(npkwargs)  
+        cerebro.plot(**pkwargs)  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description='Sample for Signal concepts')  
+    parser.add_argument('--data', required=False,  
+                        default='../../datas/2005-2006-day- 
+001.txt',  
+                        help='Specific data to be read in')  
+    parser.add_argument('--fromdate', required=False,  
+default=None,  
+                        help='Starting date in YYYY-MM-DD format')  
+    parser.add_argument('--todate', required=False, default=None,  
+                        help='Ending date in YYYY-MM-DD format')  
+    parser.add_argument('--cash', required=False, action='store',  
+                        type=float, default=50000,  
+                        help=('Cash to start with'))  
+    parser.add_argument('--smaperiod', required=False,  
+action='store',  
+                        type=int, default=30,  
+                        help=('Period for the moving average'))  
+    parser.add_argument('--exitperiod', required=False,  
+action='store',  
+                        type=int, default=5,  
+                        help=('Period for the exit control SMA'))  
+    parser.add_argument('--signal', required=False,  
+action='store',  
+                        default=MAINSIGNALS .keys()[0],  
+choices=MAINSIGNALS,  
+                        help=('Signal type to use for the main  
+signal'))  
+    parser.add_argument('--exitsignal', required=False,  
+action='store',  
+                        default=None, choices=EXITSIGNALS,  
+                        help=('Signal type to use for the exit  
+signal'))  
+    parser.add_argument('--plot', '-p', nargs='?', required=False,  
+                        metavar='kwargs', const=True,  
+                        help=('Plot the read data applying any  
+kwargs passed\n'                               '\n'                               
+
+  
+﻿  
+
+'For example:\n'                               '\n'                               
+'  --plot style="candle" (to plot candles)\n'))  
+    if pargs is not None:  
+        return parser.parse_args(pargs)  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+Strategy-策略参考  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:36:36 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+内置策略参考 #  
+
+MA_CrossOver #  
+
+别名：SMA_CrossOver ，这是一个仅做多的策略，基于移动平均线交叉操作。  
+
+交易规则 #  
+
+买入逻辑： 如果无持仓， fast 移动平均线向上穿过 slow 移动平均线。  
+
+卖出逻辑： 有持仓时， fast 移动平均线向下穿过 slow 移动平均线。  
+
+订单类型： 市价单  
+
+参数：  
+
+•   fast (10) ，_movav (<class ‘backtrader.indicators.sma.SMA’>)  
+
+•   slow (30) ，_movav (<class ‘backtrader.indicators.sma.SMA’>)  
+
+SignalStrategy #  
+
+此策略的子类旨在使用信号自动操作。信号通常是指标，预期输出值为：  
+
+•   > 0 表示多头指示  
+
+•   < 0 表示空头指示  
+
+信号分为两组，共有 5 种类型。  
+
+主要组：  
+
+  
+﻿  
+
+•   LONGSHORT  ：接受来自该信号的多头和空头指示。  
+
+•   LONG  ：  
+
+    ￮  接受多头指示进行做多。  
+
+    ￮  接受空头指示平仓多头。但：  
+
+       ▪  如果系统中有  LONGEXIT 信号，将用它来平仓多头。  
+
+       ▪  如果有 SHORT 信号且没有  LONGEXIT 信号，它将被用来平仓多头再开空 
+
+        头。  
+
+•   SHORT  ：  
+
+    ￮  接受空头指示进行做空。  
+
+    ￮  接受多头指示平仓空头。但：  
+
+       ▪  如果系统中有 SHORTEXIT 信号，将用它来平仓空头。  
+
+       ▪  如果有  LONG 信号且没有 SHORTEXIT 信号，它将被用来平仓空头再开多 
+
+        头。  
+
+退出组：  
+
+这两个信号旨在覆盖其他信号，并为平仓提供标准。  
+
+•   LONGEXIT  ：接受空头指示平仓多头。  
+
+•   SHORTEXIT  ：接受多头指示平仓空头。  
+
+订单发出：  
+
+•  订单执行类型为市价单，有效期为“直到取消” (Good until Canceled) 。  
+
+参数：  
+
+•  signals (默认值: []): 允许实例化信号并分配到正确类型的列表/元组。  
+
+•  _accumulate (默认值: False): 允许进入市场（多头/空头），即使已经在市场中。  
+
+•  _concurrent (默认值: False): 允许在已有待执行订单时发出新订单。  
+
+•  _data  (默认值:  None):  如果系统中存在多个数据，目标数据是哪一个。这可以是：  
+
+    ￮  None: 将使用系统中的第一个数据。  
+
+    ￮  int: 表示在该位置插入的数据。  
+
+    ￮  str: 创建数据时给定的名称（参数 name），或通过 cerebro.adddata(…,  
+
+    name=) 添加时给定的名称。  
+
+    ￮  数据实例。  
+
+  

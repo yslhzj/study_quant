@@ -1,0 +1,657 @@
+﻿  
+
+该观察器跟踪当前的基金份额。  
+
+参数  ：无  
+
+Plotting-绘图 #  
+
+尽管回测主要是基于数学计算的自动化过程，但人们常常希望能够实际可视化所发生 
+
+的一切。不论是使用已经经过回测的现有算法，还是查看数据所产生的内置或自定义 
+
+指标，绘图都能帮助人们更好地理解所发生的事情，剔除、修改或创建新的想法。  
+
+由于所有操作背后都是人类，绘制数据馈送、指标、操作、现金流动和投资组合价值 
+
+的演变图表有助于人们更好地理解过程，从而做出更明智的决策。因此，backtrader  
+
+使用 matplotlib 提供的功能，内置了绘图设施。  
+
+如何绘图 #  
+
+任何回测运行都可以通过调用一个方法进行绘图：  
+
+当然，这通常是最后一个命令。例如，以下简单代码使用了 backtrader 源代码中的一 
+
+个示例数据：  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import backtrader as bt  
+class St(bt.Strategy):  
+    def __init__(self):  
+        self.sma = bt.indicators.SimpleMovingAverage(self.data)  
+data = bt.feeds .BacktraderCSVData(dataname='../../datas/2005-2006- 
+day-001.txt')  
+cerebro = bt.Cerebro()  
+cerebro.adddata(data)  
+cerebro.addstrategy(St)  
+cerebro.run()  
+cerebro.plot()  
+
+这将生成以下图表：  
+
+  
+
+  
+
+  
+
+图表包含了 3 个观察器，由于缺乏任何交易，它们在这种情况下几乎没有意义：  
+
+1.  CashValue 观察器：跟踪回测运行期间的现金和总投资组合价值（包括现金）。  
+
+  
+﻿  
+
+2.  Trade 观察器：在交易结束时显示实际的利润和亏损。交易定义为开仓并将仓位 
+
+归零（直接或从多头转为空头或从空头转为多头）。  
+
+3.  BuySell 观察器：在价格图上绘制买入和卖出操作的位置。  
+
+这 3 个观察器由 cerebro  自动添加，可以通过 stdstats 参数控制（默认：True）。如 
+
+果希望禁用它们，可以如下操作：  
+
+Python  
+cerebro = bt.Cerebro(stdstats=False)  
+
+或在运行时：  
+
+Python  
+cerebro = bt.Cerebro()  
+...cerebro.run(stdstats=False)  
+
+绘图元素 #  
+
+尽管前面提到了观察器，它们并不是唯一被绘制的元素。以下 3 种元素会被绘制：  
+
+1.  使用 adddata  、  replaydata 和  resampledata 添加到 Cerebro 的数据馈送。  
+
+2.  在策略级别声明的指标（或通过 addindicator 添加到 cerebro 的指标，这纯粹 
+
+用于实验目的，并将指标添加到一个虚拟策略中）。  
+
+3.  使用 addobserver 添加到 cerebro 的观察器。  
+
+观察器是与策略同步运行的线性对象，并且可以访问整个生态系统，以便跟踪现金和 
+
+价值等内容。  
+
+绘图选项 #  
+
+指标和观察器有几个选项可以控制它们在图表上的绘制方式，分为 3 大类：  
+
+1.  影响整个对象绘图行为的选项。  
+
+2.  影响单个线条绘图行为的选项。  
+
+3.  影响系统级别绘图选项的选项。  
+
+对象级绘图选项 #  
+
+这些选项由指标和观察器中的 plotinfo 数据集控制：  
+
+Python  
+plotinfo = dict(  
+
+  
+﻿  
+
+    plot=True,  
+    subplot=True,  
+    plotname='',  
+    plotskip=False,  
+    plotabove=False,  
+    plotlinelabels=False,  
+    plotlinevalues=True,  
+    plotvaluetags=True,  
+    plotymargin=0.0,  
+    plotyhlines=[],  
+    plotyticks=[],  
+    plothlines=[],  
+    plotforce=False,  
+    plotmaster=None,  
+    plotylimited=True,  
+)  
+
+尽管 plotinfo 在类定义时显示为字典，但 backtrader 的元类机制将其转变为一个可 
+
+以继承的对象，并且可以进行多重继承。例如：  
+
+如果子类将 subplot=True 更改为 subplot=False  ，则层级结构中的进一步子类将 
+
+具有后者作为 subplot  的默认值。  
+
+有两种方法为这些参数赋值。让我们看一下 SimpleMovingAverage 实例化的第一种 
+
+方法：  
+
+Python  
+sma = bt.indicators.SimpleMovingAverage(self.data, period=15,  
+plotname='mysma')  
+
+从示例中可以推断， SimpleMovingAverage 构造函数未消耗的任何 **kwargs 都将被 
+
+解析（如果可能）为 plotinfo 值。 SimpleMovingAverage 只有一个定义的参数， 
+
+即 period  。这意味着 plotname 将匹配 plotinfo  中同名的参数。  
+
+第二种方法：  
+
+Python  
+sma = bt.indicators.SimpleMovingAverage(self.data, period=15)  
+sma.plotinfo.plotname =  'mysma'  
+
+与 SimpleMovingAverage 一起实例化的 plotinfo 对象可以被访问，并且其中的参 
+
+数也可以通过标准的 Python 点符号访问。与上面的语法相比，这种方法更容易理解。  
+
+参数含义 #  
+
+  
+﻿  
+
+•  plot ：是否绘制该对象。  
+
+•  subplot  ：是否与数据一起绘制或在独立的子图中绘制。例如，移动平均线是绘 
+
+制在数据上的，而随机指标和 RSI 则是在不同的刻度上绘制的。  
+
+•  plotname  ：在图表上使用的名称，而不是类名。例如上面的 mysma 而不是  
+
+SimpleMovingAverage  。  
+
+•  plotskip  （已弃用）： plot  的旧别名。  
+
+•  plotabove  ：是否在数据之上绘制，否则在数据下方绘制。这仅在  
+
+subplot=True  时有效。  
+
+•  plotlinelabels  ：是否在图表的图例中显示单个线条的名称，当 subplot=False  
+
+时。  
+
+•  plotlinevalues  ：控制图例中是否包含指标和观察器线条的最后绘制值。可以通 
+
+过每条线的 _plotvalue 控制。  
+
+•  plotvaluetags  ：控制是否在线条的右侧绘制带有最后值的标签。可以通过每条线 
+
+的 _plotvaluetag 控制。  
+
+•  plotymargin  ：在图表上单个子图顶部和底部添加的边距。它是一个以  1 为基数 
+
+的百分比。例如：0.05 表示 5%。  
+
+•  plothlines  ：一个包含值的可迭代对象（在刻度内），在这些值处绘制水平线。例 
+
+如，经典指标的超买、超卖区域通常在 70 和 30 处绘制线。  
+
+•  plotyticks  ：一个包含值的可迭代对象（在刻度内），在这些值处特意放置刻度值。 
+
+例如，强制刻度有 50 以识别刻度的中点。  
+
+•  plotyhlines  ：一个包含值的可迭代对象（在刻度内），在这些值处绘制水平线。 
+
+如果未定义上述任何项，那么水平线和刻度的位置将完全由此值控制。  
+
+•  plotforce  ：如果所有其他方法都失败，这是一个最后的强制绘图机制。  
+
+•  plotmaster  ：一个指标/观察器有一个主控，它是工作的数据。在某些情况下，可 
+
+能希望与不同的主控一起绘图。  
+
+•  plotylimited  ：目前仅适用于数据馈送。如果为 True        （默认），其他线条在数据 
+
+图上的绘图不会改变刻度。  
+
+线条特定绘图选项 #  
+
+指标/观察器有线条，如何绘制这些线条可以通过 plotlines 对象进行影响。大多数  
+
+plotlines  中的选项旨在直接传递给 matplotlib。文档主要通过示例进行说明。  
+
+重要：选项是按每条线条指定的。  
+
+一些选项由 backtrader 直接控制，这些选项都以 _ 开头：  
+
+  
+﻿  
+
+•   _plotskip   （布尔值）：如果设置为 True  ，表示跳过绘制特定线条。  
+
+•   _plotvalue   （布尔值）：控制此线条的图例是否包含最后绘制的值（默认值为  
+
+True ）。  
+
+•   _plotvaluetag   （布尔值）：控制是否在线条右侧绘制带有最后值的标签（默认值 
+
+为 True ）。  
+
+•   _name    （字符串）：更改特定线条的绘图名称。  
+
+•   _skipnan    （布尔值，默认：  False ）：跳过绘制 NaN 值。  
+
+•   _samecolor    （布尔值）：强制下一条线条使用与前一条相同的颜色，避免  
+
+matplotlib 为每个新绘制的元素循环颜色图。  
+
+•   _method    （字符串）：选择 matplotlib 用于绘制元素的方法。  
+
+示例：  
+
+•   MACDHisto 使用 `_  
+
+method=‘bar’` 绘制直方图。  
+
+•   BuySell 观察器：  
+
+Python  
+plotlines = dict(  
+    buy=dict(marker='^', markersize=8.0, color='lime',  
+fillstyle='full'),  
+    sell=dict(marker='v', markersize=8.0, color='red',  
+fillstyle='full')  
+)  
+
+•   Trades 观察器：  
+
+Python  
+lines = ('pnlplus', 'pnlminus')  
+plotlines = dict(  
+    pnlplus=dict(_name='Positive', marker='o', color='blue',  
+markersize=8.0, fillstyle='full'),  
+    pnlminus=dict(_name='Negative', marker='o', color='red',  
+markersize=8.0, fillstyle='full')  
+)  
+
+系统级绘图选项 #  
+
+cerebro 的 plot 方法签名：  
+
+  
+﻿  
+
+Python  
+def plot(self, plotter=None, numfigs=1, iplot=True, **kwargs):  
+
+•   plotter ：一个包含控制系统级绘图选项的对象/类。如果为 None  ，则创建默认  
+
+PlotScheme 对象。  
+
+•   numfigs ：将图表分解为多少个独立的图表。  
+
+•   iplot ：如果在 Jupyter Notebook  中运行，自动内联绘图。  
+
+•   kwargs  ：将用于更改 plotter 或默认 PlotScheme 对象的属性值。  
+
+PlotScheme #  
+
+包含控制系统级绘图的所有选项的对象。选项在代码中有文档说明。  
+
+颜色 #  
+
+PlotScheme 类定义了一个方法，可以在子类中重写，该方法返回要使用的下一个颜 
+
+色：  
+
+其中 idx 是当前线条的索引。默认颜色方案是 Tableau 10 颜色调色板，索引修改为：  
+
+Python  
+tab10_index =  [3, 0, 2, 1, 2, 4, 5, 6, 7, 8, 9]  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 15:57:21 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+Plotting-在同轴绘图 #  
+
+在之前的文章“future-spot” 中，我们在同一空间上绘制了原始数据和略微（随机）修改 
+
+后的数据，但它们并没有在同一轴上绘制。  
+
+恢复该文章的第一张图片：  
+
+  
+
+  
+
+  
+
+我们可以看到：  
+
+•   图表的左右两侧有不同的刻度。  
+
+  
+﻿  
+
+•   当观察摆动的红线（随机化数据）时最明显，它在原始数据周围上下摆动大约 50  
+
+个点。  
+
+•   在图表上，视觉印象是这种随机化数据大部分时间都在原始数据上方。这只是由 
+
+于不同刻度导致的视觉印象。  
+
+虽然  1.9.32.116  版本已经初步支持完全在同一轴上绘图，但图例标签会重复（仅标签， 
+
+不是数据），这会让人感到困惑。  
+
+1.9.33.116 版本修复了这个问题，允许完全在同一轴上绘图。使用模式类似于选择使 
+
+用哪个数据进行绘图。在之前的文章中：  
+
+Python  
+import backtrader as bt  
+cerebro = bt.Cerebro()  
+data0 = bt.feeds .MyFavouriteDataFeed(dataname='futurename')  
+cerebro.adddata(data0)  
+data1 = bt.feeds .MyFavouriteDataFeed(dataname='spotname')  
+data1.compensate(data0)  # 告诉系统 data1 的操作影响  
+data0data1.plotinfo.plotmaster = data0  
+data1.plotinfo.sameaxis = Truecerebro.adddata(data1)  
+...  
+cerebro.run()  
+
+data1 获取一些 plotinfo 值来：  
+
+•   与 plotmaster    （即 data0）在同一空间绘图。  
+
+•   获取使用 sameaxis  的指示。  
+
+原因是平台无法提前知道每个数据的刻度是否兼容。因此，它们会在独立的刻度上绘 
+
+图。  
+
+在之前的示例中，增加了一个选项在 sameaxis 上绘图。示例执行：  
+
+Shell  
+$ ./future-spot.py --sameaxis  
+
+结果图表：  
+
+  
+
+  
+
+  
+
+需要注意的是：  
+
+•   右侧只有一个刻度。  
+
+  
+﻿  
+
+•   现在，随机化数据似乎明显在原始数据周围摆动，这是预期的视觉行为。  
+
+示例用法 #  
+
+Shell  
+$ ./future-spot.py --help  
+usage: future-spot.py [-h] [--no-comp] [--sameaxis]  
+Compensation example  
+optional arguments:  
+  -h, --help  show this help message and exit  
+  --no-comp  
+  --sameaxis  
+
+示例代码 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import argparse  
+import random  
+import backtrader as bt  
+# 修改收盘价的过滤器 def close_changer(data, *args, **kwargs):  
+    data.close[0] += 50.0 * random.randint(-1, 1)  
+
+    return False  # 流长度不变  
+
+# 重写标准标记 class BuySellArrows(bt.observers.BuySell):  
+    plotlines = dict(buy=dict(marker='$\u21E7$', markersize=12.0),  
+                     sell=dict(marker='$\u21E9$',  
+markersize=12.0))  
+class St(bt.Strategy):  
+    def __init__(self):  
+        bt.obs.BuySell(self.data0, barplot=True)  # 在此处完成         
+
+BuySellArrows(self.data1, barplot=True)  # 为不同的数据设置不同的标 
+
+记  
+    def next(self):  
+        if not self.position:  
+            if random.randint(0, 1):  
+                self.buy(data=self.data0)  
+                self.entered = len(self)  
+
+        else:  # 在市场中            if (len(self) -  
+self.entered) >= 10:  
+                self.sell(data=self.data1)  
+def runstrat(args=None):  
+
+  
+﻿  
+
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+
+    dataname =  '../../datas/2006-day-001.txt'  # 数据馈送  
+    data0 = bt.feeds .BacktraderCSVData(dataname=dataname,  
+name='data0')  
+    cerebro.adddata(data0)  
+    data1 = bt.feeds .BacktraderCSVData(dataname=dataname,  
+name='data1')  
+    data1.addfilter(close_changer)  
+    if not args.no_comp:  
+        data1.compensate(data0)  
+    data1.plotinfo.plotmaster = data0  
+    if args.sameaxis:  
+        data1.plotinfo.sameaxis = True    cerebro.adddata(data1)  
+    cerebro.addstrategy(St)  # 示例策略  
+
+    cerebro.addobserver(bt.obs.Broker)  # 通过 stdstats=False 移除     
+
+cerebro.addobserver(bt.obs.Trades)  # 通过 stdstats=False 移除  
+    cerebro.broker.set_coc(True)  
+    cerebro.run(stdstats=False)  # 执行     
+
+cerebro.plot(volume=False)  # 并绘图  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=('Compensation example'))  
+    parser.add_argument('--no-comp', required=False,  
+action='store_true')  
+    parser.add_argument('--sameaxis', required=False,  
+action='store_true')  
+    return parser.parse_args(pargs)  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 16:06:48 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+Plotting- 日期范围 #  
+
+在  1.9.31.x 版本中，backtrader 增加了部分绘图的功能。  
+
+可以使用策略实例中保存的完整时间戳数组的索引来指定绘图范围  
+
+也可以使用实际的 datetime.date 或 datetime.datetime 实例来限制绘图范围。  
+
+  
+﻿  
+
+仍然通过标准的 cerebro.plot 进行。例如：  
+
+Python  
+cerebro.plot(start=datetime.date(2005, 7, 1),  
+end=datetime.date(2006, 1, 31))  
+
+这对人类来说是最直接的方法。具有扩展能力的人类实际上可以尝试使用时间戳的索 
+
+引，如下所示：  
+
+Python  
+cerebro.plot(start=75, end=185)  
+
+下面是一个非常标准的示例，其中包含一个简单移动平均线（在数据上绘图）、一个随 
+
+机指标（独立绘图）以及随机指标线的交叉。在命令行参数中传递给 cerebro.plot  
+
+的参数。  
+
+使用日期方法的执行：  
+
+Shell  
+./partial-plot.py --plot 'start=datetime.date(2005, 7,  
+1),end=datetime.date(2006, 1, 31)'  
+
+Python 中的 eval 魔法允许直接在命令行中编写 datetime.date 并将其映射到实际有 
+
+意义的内容。输出图表如下所示：  
+
+  
+
+  
+
+  
+
+让我们将其与完整的绘图进行比较，以查看数据是否确实从两端跳过：  
+
+Python 中的 eval 魔法允许直接在命令行中编写 datetime.date 并将其映射到实际有 
+
+意义的内容。输出图表如下所示：  
+
+  
+
+  
+
+  
+
+示例用法 #  
+
+Shell  
+$ ./partial-plot.py --help  
+usage: partial-plot.py [-h] [--data0 DATA0] [--fromdate FROMDATE]                        
+
+  
+﻿  
+
+[--todate TODATE] [--cerebro kwargs] [--broker kwargs]                        
+[--sizer kwargs] [--strat kwargs] [--plot [kwargs]]  
+Sample for partial plotting  
+optional arguments:  
+  -h, --help           show this help message and exit  
+  --data0 DATA0        Data to read in (default:  
+                        ../../datas/2005-2006-day-001.txt)  -- 
+fromdate FROMDATE  Date[time] in YYYY-MM-DD[THH:MM:SS] format  
+(default: )  --todate TODATE      Date[time] in YYYY-MM- 
+DD[THH:MM:SS] format (default: )  --cerebro kwargs     kwargs in  
+key=value format (default: )  --broker kwargs      kwargs in  
+key=value format (default: )  --sizer kwargs       kwargs in  
+key=value format (default: )  --strat kwargs       kwargs in  
+key=value format (default: )  --plot [kwargs]      kwargs in  
+key=value format (default: )  
+
+示例代码 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+unicode_literals)  
+import argparse  
+import datetime  
+import backtrader as bt  
+class St(bt.Strategy):  
+    params = ()  
+    def __init__(self):  
+        bt.ind.SMA()  
+        stoc = bt.ind.Stochastic()  
+        bt.ind.CrossOver(stoc.lines.percK, stoc.lines.percD)  
+    def next(self):  
+        pass  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    # 数据馈送 kwargs    kwargs = dict()  
+
+    # 解析 from/to-date    dtfmt, tmfmt =  '%Y-%m-%d', 'T%H:%M:%S'     
+for a, d in ((getattr(args, x), x) for x in ['fromdate',  
+'todate']):  
+        if a:  
+            strpfmt = dtfmt + tmfmt * ('T' in a)  
+            kwargs[d] = datetime.datetime.strptime(a, strpfmt)  
+    # 数据馈送    data0 =  
+
+  
+﻿  
+
+bt.feeds .BacktraderCSVData(dataname=args.data0, **kwargs)  
+    cerebro.adddata(data0)  
+
+    # 经纪人    cerebro.broker =  
+bt.brokers.BackBroker(**eval('dict(' + args.broker +  ')'))  
+    # 大小调整器    cerebro.addsizer(bt.sizers.FixedSize,  
+**eval('dict(' + args.sizer +  ')'))  
+    # 策略    cerebro.addstrategy(St, **eval('dict(' + args.strat  
++  ')'))  
+    # 执行    cerebro.run(**eval('dict(' + args.cerebro +  ')'))  
+
+    if args.plot:  # 如果请求绘图，则绘制         
+cerebro.plot(**eval('dict(' + args.plot +  ')'))  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description=(  
+             'Sample for partial plotting'        )  
+    )  
+    parser.add_argument('--data0', default='../../datas/2005-2006- 
+day-001.txt',  
+                        required=False, help='Data to read in')  
+    #  日期的默认值    parser.add_argument('--fromdate',  
+required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--todate', required=False, default='',  
+                        help='Date[time] in YYYY-MM-DD[THH:MM:SS]  
+format')  
+    parser.add_argument('--cerebro', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--broker', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--sizer', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--strat', required=False, default='',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    parser.add_argument('--plot', required=False, default='',  
+                        nargs='?', const='{}',  
+                        metavar='kwargs', help='kwargs in  
+key=value format')  
+    return parser.parse_args(pargs)  
+
+  

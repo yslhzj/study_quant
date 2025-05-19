@@ -1,0 +1,4890 @@
+﻿  
+
+                                               csv 属性控制哪些对象实 
+
+                                               际进入 CSV 流（数据源 
+
+                                               和观察者默认为 True ，指 
+
+                                               标默认为 False）。  
+
+csv_filternan          True                    CSV 流中清除 nan 值（用 
+
+                                               空字段替换）。  
+
+csv_counter            True                    是否应保持并输出实际输 
+
+                                               出行的计数器。  
+
+indent                 2                       每个级别的缩进空格数。  
+
+separators             ‘=’, ‘-’, ‘+’, ‘*’, ‘.’, ‘~’, ‘"’, ‘^’,  用于分隔部分/子部分的行 
+                       ‘#’                     分隔符字符。  
+
+seplen                 79                      包括缩进在内的行分隔符 
+
+                                               的总长度。  
+
+rounding               None                    将浮点数舍入到的小数位 
+
+                                               数。如果为 None，则不 
+
+                                               执行舍入。  
+
+DataFeed-Data Feeds  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:52:33 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+数据源 #  
+
+Backtrader 提供了一组数据源解析器（在撰写本文时都是基于 CSV 的）以便从不同 
+
+来源加载数据。  
+
+•  Yahoo  （在线或已保存到文件）  
+
+•  VisualChart （参见 www.visualchart.com ）  
+
+•   Backtrader CSV （自定义格式用于测试）  
+
+•   通用 CSV 支持  
+
+  
+﻿  
+
+从快速入门指南中可以清楚地看到，您可以将数据源添加到 Cerebro 实例中。这些数 
+
+据源稍后将在策略中可用：  
+
+•   self.datas 数组（按插入顺序）  
+
+•   数组对象的别名：  
+
+    ￮  self.data 和 self.data0 指向第一个元素  
+
+    ￮  self.dataX 指向数组中索引为 X  的元素  
+
+以下是插入方式的快速提醒：  
+
+Python  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+data =  
+btfeeds.YahooFinanceCSVData(dataname='wheremydatacsvis.csv')  
+cerebro = bt.Cerebro()  
+cerebro.adddata(data)  # 可以传递一个  'name' 参数用于绘图  
+
+数据源通用参数 #  
+
+这个数据源可以直接从 Yahoo 下载数据并将其输入系统。  
+
+Backtrader 数据源常用参数：  
+
+参数名                    默认值                    描述  
+
+dataname               None                   必须提供  。其含义因数据 
+
+                                              源类型而异，例如文件路 
+
+                                              径、股票代码等。  
+
+name                   ''                     用于绘图时的装饰性名 
+
+                                              称。如果未指定，可能会 
+
+                                              从 dataname 派生（例 
+
+                                              如：文件路径的最后一部 
+
+                                              分）。  
+
+fromdate               mindate                Python datetime 对象， 
+
+                                              表示应忽略此日期之前的 
+
+                                              任何数据。  
+
+  
+﻿  
+
+todate                 maxdate                Python datetime 对象， 
+
+                                             表示应忽略此日期之后的 
+
+                                             任何数据。  
+
+timeframe              TimeFrame.Days         时间框架。可能的值包 
+
+                                             括： Ticks  、  
+
+                                             Seconds  、 Minutes  、  
+
+                                             Days  、 Weeks  、 Months  
+
+                                              和 Years  。  
+
+compression            1                     每个实际条形图的条形 
+
+                                             数。仅在数据重采样/重放 
+
+                                              中有效。  
+
+sessionstart           None                  数据会话的开始时间。可 
+
+                                              用于重采样等目的。  
+
+sessionend             None                  数据会话的结束时间。可 
+
+                                              用于重采样等目的。  
+
+CSV 数据源通用参数 #  
+
+参数（除了通用参数外）：  
+
+参数名                    默认值                   描述  
+
+headers                True                  指示传递的数据是否具有 
+
+                                             初始标题行。  
+
+separator              ','                   分隔符，用于标记 CSV  
+
+                                             每行中的各个字段。  
+
+GenericCSVData #  
+
+此类公开了一个通用接口，允许解析几乎所有的 CSV 文件格式。  
+
+根据参数定义的顺序和字段存在情况解析 CSV 文件。  
+
+特定参数（或特定含义）：  
+
+  
+﻿  
+
+参数名                   默认值                  描述  
+
+dataname              必须提供                 要解析的文件名或类似文 
+
+                                           件的对象。  
+
+datetime              0                    包含日期（或日期时间） 
+
+                                           字段的列索引。  
+
+time                  -1                   如果与日期时间字段分 
+
+                                           开，则包含时间字段的列 
+
+                                           索引（  -1 表示不存在）。  
+
+open                  1                    包含开盘价字段的列索 
+
+                                            引。  
+
+high                  2                    包含最高价字段的列索 
+
+                                            引。  
+
+low                   3                    包含最低价字段的列索 
+
+                                            引。  
+
+close                 4                    包含收盘价字段的列索 
+
+                                            引。  
+
+volume                5                    包含成交量字段的列索 
+
+                                            引。  
+
+openinterest          6                    包含未平仓合约数字段的 
+
+                                           列索引。  
+
+nullvalue             float('NaN')         如果缺少应有的值（CSV  
+
+                                           字段为空），将使用的 
+
+                                           值。  
+
+dtformat              '%Y-%m-%d %H:%M:%S'  用于解析日期时间 CSV  
+
+                                           字段的格式。  
+
+tmformat              '%H:%M:%S'           如果存在，用于解析时间  
+
+                                           CSV 字段的格式（默认情 
+
+  
+﻿  
+
+                                                   况下时间 CSV 字段不存 
+
+                                                   在）。  
+
+这些参数允许用户根据其 CSV 文件的结构自定义数据解析方式，以便正确加载数据进 
+
+行回测。  
+
+示例使用 #  
+
+满足以下要求的示例用法：  
+
+•   限制输入年份为 2000  
+
+•   HLOC 顺序而不是 OHLC  
+
+•   将缺失值替换为零（0.0）  
+
+•   提供日线数据，日期时间只是格式为 YYYY-MM-DD 的日期  
+
+•   没有 openinterest 列  
+
+代码如下：  
+
+Python  
+import datetime  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+......  
+data = btfeeds.GenericCSVData(  
+    dataname='mydata.csv',  
+    fromdate=datetime.datetime(2000, 1, 1),  
+    todate=datetime.datetime(2000, 12, 31),  
+    nullvalue=0.0,  
+    dtformat=('%Y-%m-%d'),  
+    datetime=0,  
+    high=1,  
+    low=2,  
+    open=3,  
+    close=4,  
+    volume=5,  
+    openinterest=-1)  
+...  
+
+略微修改后的要求：  
+
+•   限制输入年份为 2000  
+
+•   HLOC 顺序而不是 OHLC  
+
+  
+﻿  
+
+•   将缺失值替换为零（0.0）  
+
+•   提供日内数据，带有单独的日期和时间列  
+
+•    日期格式为 YYYY-MM-DD  
+
+•   时间格式为 HH.MM.SS          （而不是通常的 HH:MM:SS）  
+
+•   没有 openinterest 列  
+
+代码如下：  
+
+Python  
+import datetime  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+......  
+data = btfeeds.GenericCSVData(  
+    dataname='mydata.csv',  
+    fromdate=datetime.datetime(2000, 1, 1),  
+    todate=datetime.datetime(2000, 12, 31),  
+    nullvalue=0.0,  
+    dtformat=('%Y-%m-%d'),  
+    tmformat=('%H.%M.%S'),  
+    datetime=0,  
+    time=1,  
+    high=2,  
+    low=3,  
+    open=4,  
+    close=5,  
+    volume=6,  
+    openinterest=-1)  
+
+这也可以通过子类化永久保存：  
+
+Python  
+import datetime  
+import backtrader.feeds as btfeeds  
+class MyHLOC(btfeeds.GenericCSVData):  
+  params = (  
+    ('fromdate', datetime.datetime(2000, 1, 1)),  
+    ('todate', datetime.datetime(2000, 12, 31)),  
+    ('nullvalue', 0.0),  
+    ('dtformat', ('%Y-%m-%d')),  
+    ('tmformat', ('%H.%M.%S')),  
+    ('datetime', 0),  
+    ('time', 1),  
+
+  
+﻿  
+
+    ('high', 2),  
+    ('low', 3),  
+    ('open', 4),  
+    ('close', 5),  
+    ('volume', 6),  
+    ('openinterest', -1)  
+)  
+
+现在可以通过提供 dataname 重用此新类：  
+
+Python  
+data = btfeeds.MyHLOC(dataname='mydata.csv')  
+
+DataFeed-扩展数据源  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:52:36 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+用户是否可以轻松扩展现有机制，以添加额外的信息，将其与现有的价格信息（如开 
+
+盘价、高价等）一起传递？  
+
+据我了解，答案是：可以。  
+
+•   一个数据源，正在解析为 CSV 格式  
+
+•   使用 GenericCSVData 加载信息  
+
+•   这种通用 CSV 支持是为了响应 Issue #6 开发的  
+
+•   一个额外的字段，显然包含 P/E 信息，需要与解析的 CSV 数据一起传递  
+
+让我们基于 CSV 数据源开发和 GenericCSVData 示例帖子构建。  
+
+步骤： #  
+
+1.  假设 P/E 信息已设置在被解析的 CSV 数据中  
+
+2.  使用 GenericCSVData 作为基类  
+
+3.  使用 pe 扩展现有的行（开盘价/最高价/最低价/收盘价/成交量/持仓兴趣）  
+
+4.  添加一个参数，让调用者确定 P/E 信息的列位置  
+
+结果如下：  
+
+Python  
+
+  
+﻿  
+
+from backtrader.feeds import GenericCSVData  
+class GenericCSV_PE(GenericCSVData):  
+
+    # 添加  'pe' 行到从基类继承的行中    lines = ('pe',)  
+
+    # GenericCSVData 中的 openinterest 索引为 7 ... 添加 1    # 将参 
+
+数添加到从基类继承的参数中    params = (('pe', 8),)  
+
+这样工作就完成了…  
+
+稍后在策略中使用此数据源时：  
+
+Python  
+import backtrader as bt  
+....  
+class MyStrategy(bt.Strategy):  
+     ...  
+    def next(self):  
+        if self.data.close > 2000 and self.data.pe < 12:  
+
+            # TORA TORA TORA --- 退出市场             
+self.sell(stake=1000000, price=0.01, exectype=Order.Limit)  
+     ...  
+
+绘制额外的 P/E 行 #  
+
+显然，数据源中没有自动绘制支持这个额外的行。  
+
+最好的替代方法是在该行上进行简单移动平均并在单独的轴上绘制：  
+
+Python  
+import backtrader as bt  
+import backtrader.indicators as btind  
+....  
+class MyStrategy(bt.Strategy):  
+    def __init__(self):  
+        # 指标自动注册，即使在类中没有保留明显的引用也会绘制         
+btind.SMA(self.data.pe, period=1, subplot=False)  
+     ...  
+    def next(self):  
+        if self.data.close > 2000 and self.data.pe < 12:  
+            # TORA TORA TORA --- 退出市场             
+self.sell(stake=1000000, price=0.01, exectype=Order.Limit)  
+     ...  
+
+DataFeed-开发 CSV 数据源  
+
+  
+﻿  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:52:40 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+DataFeed-CSV 数据源开发 #  
+
+Backtrader 已经提供了一些通用 CSV 数据源和特定的 CSV 数据源。  
+
+•   GenericCSVData  
+
+•   VisualChartCSVData  
+
+•   YahooFinanceData （用于在线下载）  
+
+•   YahooFinanceCSVData （用于已下载的数据）  
+
+•   BacktraderCSVData （内部使用…用于测试目的，但也可以使用）  
+
+即使如此，最终用户可能仍希望开发对特定 CSV 数据源的支持。  
+
+通常的格言是：“说起来容易做起来难”。实际上，结构旨在使其变得简单。  
+
+步骤 #  
+
+1.  从 backtrader.CSVDataBase 继承  
+
+2.  根据需要定义任何参数  
+
+3.  在 start 方法中进行任何初始化  
+
+4.  在 stop 方法中进行任何清理  
+
+5.  定义一个 _loadline 方法，其中实际工作发生。此方法接收一个参数：  
+
+linetokens  。  
+
+顾名思义，这包含根据分隔符参数（从基类继承）拆分当前行后的标记。  
+
+如果在完成其工作后有新数据……填充相应的行并返回 True  。  
+
+如果没有可用的数据，因此解析已结束：返回  False  。  
+
+如果后台代码发现没有更多行需要解析，则可能不需要返回  False  。  
+
+已考虑的事项：  
+
+•   打开文件（或接收类似文件的对象）  
+
+•   跳过标头行（如果指示存在）  
+
+•   读取行  
+
+•   标记行  
+
+  
+﻿  
+
+•   预加载支持（将整个数据源一次性加载到内存中）  
+
+通常一个示例胜过千言万语。让我们使用 BacktraderCSVData 中定义的内部 CSV 解 
+
+析代码的简化版本。这个版本不需要初始化或清理（例如，这可能是打开一个套接字 
+
+并稍后关闭它）。  
+
+注意：  
+
+backtrader 数据源包含通常的行业标准源，这些源是要填充的。即：  
+
+•   datetime  
+
+•   open  
+
+•   high  
+
+•   low  
+
+•   close  
+
+•   volume  
+
+•   openinterest  
+
+如果您的策略/算法或简单数据浏览只需要，例如收盘价，您可以不触碰其他字段（每 
+
+次迭代会自动用 float('NaN') 值填充它们，然后用户代码有机会进行任何操作）。  
+
+在此示例中，仅支持每日格式：  
+
+Python  
+import itertools  
+import backtrader as bt  
+class MyCSVData(bt.CSVDataBase):  
+    def start(self):  
+        # 对于此数据源类型无需做任何操作        pass  
+    def stop(self):  
+        # 对于此数据源类型无需做任何操作        pass  
+    def _loadline(self, linetokens):  
+        i = itertools.count(0)  
+        dttxt = linetokens[next(i)]  
+        # 格式为 YYYY-MM-DD        y = int(dttxt[0:4])  
+        m = int(dttxt[5:7])  
+        d = int(dttxt[8:10])  
+        dt = datetime.datetime(y, m, d)  
+        dtnum = date2num(dt)  
+        self.lines.datetime[0] = dtnum  
+        self.lines.open[0] = float(linetokens[next(i)])  
+        self.lines.high[0] = float(linetokens[next(i)])  
+        self.lines.low[0] = float(linetokens[next(i)])  
+        self.lines.close[0] = float(linetokens[next(i)])  
+
+  
+﻿  
+
+        self.lines.volume[0] = float(linetokens[next(i)])  
+        self.lines.openinterest[0] = float(linetokens[next(i)])  
+        return True  
+
+代码假设所有字段都到位且可转换为浮点数，除了日期时间，它具有固定的 YYYY- 
+
+MM-DD 格式，可以不使用 datetime.datetime.strptime 进行解析。  
+
+通过添加一些代码行来处理空值和日期格式解析，可以满足更复杂的需求。 
+
+GenericCSVData 就是这样做的。  
+
+警告 #  
+
+使用现有的 GenericCSVData 和继承，可以实现很多格式支持。  
+
+让我们添加对 Sierra Chart 每日格式的支持（始终以 CSV 格式存储）。  
+
+定义（通过查看一个 ‘.dly’ 数据文件）：  
+
+字段：Date, Open, High, Low, Close, Volume, OpenInterest  
+
+行业标准字段以及 GenericCSVData 已支持的字段，顺序相同（也是行业标准）  
+
+分隔符：,  
+
+日期格式：YYYY/MM/DD  
+
+一个用于这些文件的解析器：  
+
+Python  
+class SierraChartCSVData(backtrader.feeds .GenericCSVData):  
+    params = (('dtformat', '%Y/%m/%d'),)  
+
+参数定义只是重新定义了基类中的一个现有参数。在这种情况下，只需要更改日期格 
+
+式字符串。  
+
+完成 #  
+
+Sierra Chart 的解析器已经完成。  
+
+下面是 GenericCSVData 的参数定义作为提醒：  
+
+Python  
+class GenericCSVData(feed.CSVDataBase):  
+    params = (  
+        ('nullvalue', float('NaN')),  
+        ('dtformat', '%Y-%m-%d %H:%M:%S'),  
+        ('tmformat', '%H:%M:%S'),  
+
+  
+﻿  
+
+        ('datetime', 0),  
+        ('time', -1),  
+        ('open', 1),  
+        ('high', 2),  
+        ('low', 3),  
+        ('close', 4),  
+        ('volume', 5),  
+        ('openinterest', 6),  
+    )  
+
+DataFeed-开发 Binary 数据源  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:54:52 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+注意  ：示例中使用的 Binary 文件 goog.fd 属于 VisualChart ，不能与 backtrader 一 
+
+起分发。  
+
+对于那些有兴趣直接使用 Binary 文件的人，可以免费下载 VisualChart 。  
+
+CSV 数据源开发展示了如何添加新的基于 CSV 的数据源。现有的基类 CSVDataBase  
+
+提供了框架，减轻了子类的大部分工作，在大多数情况下，它们可以简单地执行：  
+
+Python  
+def _loadline(self, linetokens):  
+
+  # 在这里解析 linetokens 并将它们放入 self.lines.close,  
+
+self.lines.high 等中  
+
+  return True # 如果数据已解析，否则返回 False  
+
+基类负责参数、初始化、打开文件、读取行、将行拆分为标记以及其他事项，例如跳 
+
+过不符合日期范围（fromdate ，todate）的行，这些行可能由最终用户定义。  
+
+开发非 CSV 数据源遵循相同的模式，而无需深入到已拆分的行标记。  
+
+需要做的事情： #  
+
+1.  从 backtrader.feed.DataBase 派生  
+
+2.  添加任何需要的参数  
+
+3.  如果需要初始化，重写 __init__(self) 和/或 start(self)  
+
+4.  如果需要清理代码，重写 stop(self)  
+
+  
+﻿  
+
+5.  工作发生在必须始终重写的方法 _load(self)  内  
+
+让我们看看 backtrader.feed.DataBase  已经提供的参数：  
+
+Python  
+from backtrader.utils.py3 import with_metaclass  
+......  
+class DataBase(with_metaclass(MetaDataBase,  
+dataseries.OHLCDateTime)):  
+    params = (('dataname', None),  
+        ('fromdate', datetime.datetime.min),  
+        ('todate', datetime.datetime.max),  
+        ('name', ''),  
+        ('compression', 1),  
+        ('timeframe', TimeFrame.Days),  
+        ('sessionend', None))  
+
+这些参数具有以下含义：  
+
+•   dataname  ：允许数据源识别如何获取数据。在 CSVDataBase 的情况下，此参数 
+
+表示文件路径或已存在的类似文件的对象。  
+
+•   fromdate 和 todate  ：定义传递给策略的日期范围。数据源提供的任何超出此范 
+
+围的值都将被忽略。  
+
+•   name  ：用于绘图目的的装饰名称。  
+
+•   timeframe  ：表示时间工作参考。潜在值： Ticks , Seconds  , Minutes , Days ,  
+
+Weeks  , Months 和 Years  。  
+
+•   compression  （默认值：1）：每条实际条的条数。信息性。仅在数据重采样/重放 
+
+中有效。  
+
+•   sessionend  ：如果传递（  datetime.time  对象），将添加到数据源日期时间行， 
+
+允许识别会话结束。  
+
+示例二进制数据源 #  
+
+backtrader 已经定义了一个 CSV 数据源（VChartCSVData ）用于 VisualChart  的导出 
+
+数据，但也可以直接读取二进制数据文件。  
+
+让我们来实现（完整的数据源代码可以在文末找到）。  
+
+初始化 #  
+
+二进制 VisualChart 数据文件可以包含每日数据（.fd 扩展名）或日内数据（.min 扩展 
+
+名）。这里使用参数 timeframe 来区分读取的文件类型。  
+
+  
+﻿  
+
+在 __init__  中，设置每种类型不同的常量。  
+
+Python  
+def __init__(self):  
+    super(VChartData, self).__init__()  
+    # 使用 informative "timeframe" 参数来理解传递的 "dataname"    #  
+
+是指日内还是每日数据源    if self.p.timeframe >= TimeFrame.Days:  
+        self.barsize = 28        self.dtsize = 1         
+self.barfmt =  'IffffII'    else:  
+        self.dtsize = 2        self.barsize = 32         
+self.barfmt =  'IIffffII'  
+
+开始 #  
+
+数据源将在回测开始时启动（在优化期间实际上可以启动多次）。  
+
+在 start 方法中，除非传递了类似文件的对象，否则二进制文件会被打开。  
+
+Python  
+def start(self):  
+    # 数据源必须启动 ...打开文件（或查看是否已打开）    self.f = None     
+if hasattr(self.p.dataname, 'read'):  
+        # 传入了文件（例如：来自 GUI）        self.f =  
+self.p.dataname  
+    else:  
+        # 让异常传播        self.f = open(self.p.dataname, 'rb')  
+
+停止 #  
+
+回测结束时调用。  
+
+如果文件已打开，则将其关闭。  
+
+Python  
+def stop(self):  
+
+    # 如果有文件，关闭它    if self.f is not None:  
+        self.f .close()  
+        self.f = None  
+
+实际加载 #  
+
+实际工作在 _load  中完成。调用以加载下一组数据，在这种情况下是下一个： 
+
+datetime 、open 、high、low、close 、volume 、openinterest 。在 backtrader 中，“实 
+
+  
+﻿  
+
+际”时刻对应于索引 0 。  
+
+将从打开的文件中读取一些字节（由 __init__  中设置的常量确定），使用 struct 模 
+
+块解析，如果需要进一步处理（如日期和时间的 divmod 操作），并存储在数据源的行 
+
+中：datetime 、open 、high、low、close、volume 、openinterest 。  
+
+如果无法从文件中读取数据，则假定已达到文件末尾（EOF）  
+
+返回  False  以指示没有更多数据可用  
+
+如果数据已加载并解析：  
+
+返回 True  以指示数据集加载成功  
+
+Python  
+def _load(self):  
+    if self.f is None:  
+        # 如果没有文件 ...无法解析        return False  
+
+    # 读取所需数量的二进制数据    bardata =  
+self.f .read(self.barsize)  
+    if not bardata:  
+
+        # 如果没有读取数据 ...游戏结束返回 "False"        return False  
+
+    # 使用 struct 解析数据    bdata = struct.unpack(self.barfmt,  
+bardata)  
+    # 年份存储为每年 500 天    y, md = divmod(bdata[0], 500)  
+
+    # 月份存储为每月 32 天    m, d = divmod(md, 32)  
+
+    # 将 y, m, d 放入 datetime    dt = datetime.datetime(y, m, d)  
+
+    if self.dtsize > 1:  # 分钟条        # 每日时间以秒为单位存储         
+hhmm, ss = divmod(bdata[1], 60)  
+        hh, mm = divmod(hhmm, 60)  
+        # 将时间添加到现有的 datetime        dt =  
+dt.replace(hour=hh, minute=mm, second=ss)  
+    self.lines.datetime[0] = date2num(dt)  
+    # 获取解析的数据的其余部分    o, h, l, c, v, oi =  
+bdata[self.dtsize:]  
+    self.lines.open[0] = o  
+    self.lines.high[0] = h  
+    self.lines.low[0] = l  
+    self.lines.close[0] = c  
+    self.lines.volume[0] = v  
+    self.lines.openinterest[0] = oi  
+    # 返回成功    return True  
+
+其他二进制格式 #  
+
+  
+﻿  
+
+同样的模型可以应用于任何其他二进制源：  
+
+•   数据库  
+
+•   分层数据存储  
+
+•   在线来源  
+
+步骤再次说明：  
+
+•   __init__ -> 实例的任何初始化代码，仅一次  
+
+•   start -> 回测开始时（如果将进行优化则会多次运行）  
+
+•   stop -> 清理，例如关闭数据库连接或打开的套接字  
+
+•   _load -> 查询数据库或在线源以获取下一组数据并将其加载到对象的行中。标准 
+
+字段为：datetime 、open 、high、low、close 、volume 、openinterest  
+
+VChartData 测试 #  
+
+VChartData 从本地  .fd 文件加载 2006 年 Google 的数据。  
+
+仅涉及加载数据，因此不需要策略的子类。  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import datetime  
+import backtrader as bt  
+from vchart import VChartData  
+if __name__ ==  '__main__':  
+
+    # 创建 cerebro 实体    cerebro = bt.Cerebro(stdstats=False)  
+
+    # 添加策略    cerebro.addstrategy(bt.Strategy)  
+     
+################################################################## 
+#########    # 注意：    # goog.fd 文件属于 VisualChart，不能与  
+
+backtrader 一起分发    #    # VisualChart 可从 www.visualchart.com  
+
+下载     
+################################################################## 
+
+#########    # 创建数据源    datapath =  '../../datas/goog.fd'     
+data = VChartData(  
+        dataname=datapath,  
+        fromdate=datetime.datetime(2006, 1, 1),  
+        todate=datetime.datetime(2006, 12, 31),  
+        timeframe=bt.TimeFrame.Days  
+    )  
+
+  
+﻿  
+
+    # 将数据源添加到 Cerebro    cerebro.adddata(data)  
+
+    # 运行所有内容    cerebro.run()  
+
+    # 绘制结果    cerebro.plot(style='bar')  
+
+VChartData 完整代码 #  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import datetime  
+import struct  
+from backtrader.feed import DataBase  
+from backtrader import date2num  
+from backtrader import TimeFrame  
+class VChartData(DataBase):  
+    def __init__(self):  
+        super(VChartData, self).__init__()  
+        # 使用 informative "timeframe" 参数来理解传递的 "dataname"         
+
+# 是指日内还是每日数据源        if self.p.timeframe >=  
+TimeFrame.Days:  
+            self.barsize = 28            self.dtsize = 1             
+self.barfmt =  'IffffII'        else:  
+            self.dtsize = 2            self.barsize = 32             
+self.barfmt =  'IIffffII'  
+    def start(self):  
+        # 数据源必须启动 ...打开文件（或查看是否已打开）        self.f  
+= None        if hasattr(self.p.dataname, 'read'):  
+            # 传入了文件（例如：来自 GUI）            self.f =  
+self.p.dataname  
+        else:  
+            # 让异常传播            self.f = open(self.p.dataname,  
+'rb')  
+    def stop(self):  
+        # 如果有文件，关闭它        if self.f is not None:  
+            self.f .close()  
+            self.f = None  
+    def _load(self):  
+        if self.f is None:  
+            # 如果没有文件 ...无法解析            return False  
+
+        # 读取所需数量的二进制数据        bardata =  
+self.f .read(self.barsize)  
+        if not bardata:  
+
+  
+﻿  
+
+            # 如果没有读取数据 ...游戏结束返回 "False"             
+return False  
+        # 使用 struct 解析数据        bdata =  
+struct.unpack(self.barfmt, bardata)  
+
+        # 年份存储为每年 500 天        y, md = divmod(bdata[0],  
+500)  
+
+        # 月份存储为每月 32 天        m, d = divmod(md, 32)  
+
+        # 将 y, m, d 放入 datetime        dt = datetime.datetime(y,  
+m, d)  
+        if self.dtsize > 1:  # 分钟条            # 每日时间以秒为单 
+
+位存储            hhmm, ss = divmod(bdata[1], 60)  
+            hh, mm = divmod(hhmm, 60)  
+
+            # 将时间添加到现有的 datetime            dt =  
+dt.replace(hour=hh, minute=mm, second=ss)  
+        self.lines.datetime[0] = date2num(dt)  
+
+        # 获取解析的数据的其余部分        o, h, l, c, v, oi =  
+bdata[self.dtsize:]  
+        self.lines.open[0] = o  
+        self.lines.high[0] = h  
+        self.lines.low[0] = l  
+        self.lines.close[0] = c  
+        self.lines.volume[0] = v  
+        self.lines.openinterest[0] = oi  
+        # 返回成功        return True  
+
+DataFeed-多时间框架  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:55:35 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+DataFeed-多时间框架策略 #  
+
+在实际的交易中，我们常需要结合多个时间框架来制定投资决策，如在周级别评估趋 
+
+势，而在日级别执行入场，或是基于 5 分钟与 60 分钟数据的对比执行交易。在  
+
+Backtrader 中要实现这个目标，需要将不同时间框架的数据组合在一起。  
+
+本节将介绍如何在 Backtrader 实现多周期交易策略。  
+
+基本规则 #  
+
+  
+﻿  
+
+Backtrader 原生支持多时间框架的数据组合，只需遵循几个简单的规则。  
+
+第一步， 最小时间框架的数据必须首先加载  。较小时间框架（条数最多的数据）应当 
+
+首先加载到 Cerebro 实例中。  
+
+第二步， 数据必须按日期时间对齐  。为了让平台能够正确解析数据并执行策略，必须 
+
+保证各时间框架的数据时间对齐。  
+
+第三步， 使用 resampledata 实现较大时间框架的重采样  。 cerebro.resample  函 
+
+数能轻松地将较大的时间框架数据添加到策略中。  
+
+在这个基础上，就可以在较短和较长时间框架上使用不同的技术指标。要注意，应用 
+
+于大时间框架的指标产生的信号较少，还有， Backtrader 会考虑大时间框架的最小 
+
+周期，以确保数据的准确性。  
+
+示例：如何使用多个时间框架 #  
+
+如何在 Backtrader 实现多时间周期呢？大概演示这个步骤吧。  
+
+加载数据 #  
+
+首先，加载较小时间框架的数据。  
+
+Python  
+data = btfeeds.BacktraderCSVData(dataname=datapath)  
+
+将数据添加到 Cerebro #  
+
+将较小时间框架数据都添加到 Cerebro 实例中。  
+
+重采样数据 #  
+
+使用 cerebro.resampledata 将数据重采样到较大的时间框架。  
+
+Python  
+cerebro.resampledata(data, timeframe=tframes[args.timeframe],  
+compression=args.compression)  
+
+运行策略 #  
+
+执行策略并生成结果。  
+
+示例 #  
+
+  
+﻿  
+
+首先，演示每日和每周时间框架。假设我们希望在一个策略中同时使用每日和每周的 
+
+时间框架。通过命令行指定时间框架为每周，并进行数据重采样：  
+
+Bash  
+$ ./multitimeframe-example.py --timeframe weekly --compression 1  
+
+此时，程序会加载每日数据，并将其重采样为每周数据。最终输出将包括每周和每日 
+
+数据的合成图表。  
+
+继续用每日时间框架压缩。如果我们希望将每日数据压缩为每两天一条数据，可以使 
+
+用以下命令：  
+
+Bash  
+$ ./multitimeframe-example.py --timeframe daily --compression 2  
+
+此时，Backtrader 会将每日数据压缩为每两天一条数据，并生成合成图表。  
+
+还可以带简单移动平均（SMA）指标。为了展示不同时间框架对策略的影响，可以在 
+
+策略中使用简单的移动平均线（SMA）指标。SMA 将在较小和较大时间框架上应用， 
+
+并根据它们产生不同的信号。  
+
+•   在较小的时间框架（如每日）上，SMA 将在第 10 个数据点后首次计算出值。  
+
+•   在较大的时间框架（如每周）上，SMA 的计算会延迟，可能需要 10 个周期的时 
+
+间来产生有效信号。  
+
+由于 Backtrader 的多时间框架支持，较大时间框架会消耗多个较小时间框架的数据条 
+
+目来计算指标。  
+
+在策略中使用 SMA 时，如果数据点来自较大时间框架， nextstart 方法的调用可能 
+
+会有所延迟。例如，在每周时间框架下，SMA 的计算需要 10 周的数据，而在每个周 
+
+期内，我们将看到多个“nextstart”调用，因为 Backtrader 会等待所有数据都齐全时才 
+
+开始执行策略逻辑。  
+
+代码示例 #  
+
+Python  
+# 导入必要的库 from __future__ import (absolute_import, division,  
+print_function,  
+                        unicode_literals)  
+import argparse  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+import backtrader.indicators as btind  
+# 创建 SMA 策略 class SMAStrategy(bt.Strategy):  
+
+  
+﻿  
+
+    params = (  
+        ('period', 10),  # SMA 的周期        ('onlydaily', False),   
+
+# 是否只在每日时间框架上应用    )  
+    def __init__(self):  
+
+        # 为较小时间框架添加 SMA        self.sma_small_tf =  
+btind.SMA(self.data, period=self.p.period)  
+          
+        # 如果选择不只应用于每日时间框架        if not  
+self.p.onlydaily:  
+
+            # 为较大时间框架（如每周）添加 SMA             
+self.sma_large_tf = btind.SMA(self.data1, period=self.p.period)  
+
+    # nextstart 方法，用于输出调试信息    def nextstart(self):  
+        print('-------------------------------------------------- 
+')  
+        print('nextstart called with len', len(self))  
+        print('-------------------------------------------------- 
+')  
+        super(SMAStrategy, self).nextstart()  
+# 运行策略 def runstrat():  
+    args = parse_args()  
+    # 创建 Cerebro 实例    cerebro = bt.Cerebro(stdstats=False)  
+
+    # 根据用户选择的策略参数加载相应策略    if not args.indicators:  
+        cerebro.addstrategy(bt.Strategy)  
+    else:  
+        cerebro.addstrategy(SMAStrategy, period=args.period,  
+onlydaily=args.onlydaily)  
+    # 加载数据文件    datapath = args.dataname or  
+'../../datas/2006-day-001.txt'    data =  
+btfeeds.BacktraderCSVData(dataname=datapath)  
+    cerebro.adddata(data)  # 添加较小时间框架的数据  
+    tframes = dict(daily=bt.TimeFrame.Days,  
+weekly=bt.TimeFrame.Weeks, monthly=bt.TimeFrame.Months)  
+    # 根据需要重采样数据到较大时间框架    if args.noresample:  
+        datapath = args.dataname2 or  '../../datas/2006-week- 
+001.txt'        data2 =  
+btfeeds.BacktraderCSVData(dataname=datapath)  
+        cerebro.adddata(data2)  
+    else:  
+        cerebro.resampledata(data,  
+timeframe=tframes[args.timeframe], compression=args.compression)  
+    # 执行策略并生成结果    cerebro.run()  
+
+    # 绘制结果    cerebro.plot(style='bar')  
+
+# 解析命令行参数 def parse_args():  
+
+  
+﻿  
+
+    parser = argparse.ArgumentParser(description='Multitimeframe  
+test')  
+    parser.add_argument('--dataname', default='', required=False,  
+help='数据文件路径 ')  
+    parser.add_argument('--dataname2', default='', required=False,  
+
+help='第二个数据文件路径 ')  
+    parser.add_argument('--noresample', action='store_true',  
+
+help='不进行数据重采样 ')  
+    parser.add_argument('--timeframe', default='weekly',  
+choices=['daily', 'weekly', 'monthly'], help='重采样时间框架 ')  
+    parser.add_argument('--compression', default=1, type=int,  
+help='压缩数据条数 ')  
+    parser.add_argument('--indicators', action='store_true',  
+help='是否使用带指标的策略 ')  
+    parser.add_argument('--onlydaily', action='store_true', help=' 
+仅在每日时间框架上应用指标 ')  
+
+    parser.add_argument('--period', default=10, type=int, help='指 
+
+标周期 ')  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+结论 #  
+
+通过   Backtrader  的多时间框架支持，您可以轻松地将不同时间框架的数据结合在一起， 
+
+从而实现更加灵活的交易策略。只需遵循上述规则，就能在多个时间框架中应用不同 
+
+的指标，并根据数据的不同粒度调整策略的执行逻辑。  
+
+此外，Backtrader 也允许通过 nextstart 方法来精确控制每个周期的数据处理逻辑， 
+
+这使得您可以清晰地跟踪每个时间框架的计算过程，方便调试和优化。  
+
+DataFeed-重采样  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:55:57 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+当数据只有单一时间框架可用，而分析要在不同时间框架上进行，就需要进行数据重 
+
+采样。“重采样”  实际应称为  “上采样” ，因为它是从源时间框架到更大的时间框架（如： 
+
+从天到周）。  
+
+  
+﻿  
+
+Backtrader 内置了通过过滤器对象进行重采样的支持。有几种方法可以实现这一点， 
+
+但有一个简单的接口可以实现，它代替通过 cerebro.adddata(data) 将数据放入系 
+
+统中，使用  resampledata  。  
+
+Python  
+cerebro.resampledata(data, **kwargs)  
+
+有两个主要选项可以控制：  
+
+•   更改时间框架  
+
+•   压缩条数  
+
+要实现这些功能，请在调用  resampledata  时使用以下参数：  
+
+•   timeframe   （默认值： bt.TimeFrame.Days ）：目标时间框架，必须等于或大于 
+
+源时间框架。  
+
+•   compression   （默认值：1）：将选定的值“n”压缩为 1 个条。  
+
+让我们来看一个从每日到每周的示例，通过手工编写的脚本：  
+
+Bash  
+$ ./resampling-example.py --timeframe weekly --compression 1  
+
+我们可以将其与原始每日数据进行比较：  
+
+Bash  
+$ ./resampling-example.py --timeframe daily --compression 1  
+
+实现这些功能的步骤有：  
+
+1.  先用 cerebro.adddata 加载原始数据；  
+
+2.  使用带参数的  resampledata 传递数据给 cerebro  ： timeframe 和  
+
+compression  ；  
+
+示例代码：  
+
+Python  
+# 加载数据 datapath = args.dataname or  '../../datas/2006-day- 
+001.txt'data = btfeeds.BacktraderCSVData(dataname=datapath)  
+# 方便的字典用于时间框架参数转换 tframes = dict(  
+    daily=bt.TimeFrame.Days,  
+    weekly=bt.TimeFrame.Weeks,  
+    monthly=bt.TimeFrame.Months)  
+
+# 添加重采样数据而不是原始数据 cerebro.resampledata(data,  
+                     timeframe=tframes[args.timeframe],  
+
+  
+﻿  
+
+                     compression=args.compression)  
+
+假设，将时间框架从每日更改为每周，然后将 3 条压缩为  1 条。  
+
+Bash  
+$ ./resampling-example.py --timeframe weekly --compression 3  
+
+从原始的 256 个每日 Bar 中，最终得到  18 个 3 周的 Bar。因为一年是 52 周，而 52 /  
+
+3 = 17.33 ，因此有 18 个 Bar。  
+
+重采样过滤器支持其他参数，在大多数情况下不需要更改：  
+
+参数名                     默认值                     描述  
+
+bar2edge                True                    使用时间边界作为目标。 
+
+                                                例如，对于“ticks -> 5  
+
+                                                seconds” ，生成的 5 秒条 
+
+                                                将对齐到 xx:00 、xx:05 、 
+
+                                                xx:10……  
+
+adjbartime              True                    使用边界的时间调整重采 
+
+                                                样条的时间，而不是最后 
+
+                                                看到的时间戳。例如，对 
+
+                                                于重采样到“5 seconds” ， 
+
+                                                条的时间将调整为 
+
+                                                 hh:MM:05，即使最后看到 
+
+                                                 的时间戳是 
+
+                                                 hh:MM:04.33。  
+
+                                                  
+                                                注意： 只有当 bar2edge  
+
+                                                 为 True 时，才会调整时 
+
+                                                 间。如果条没有对齐到边 
+
+                                                界，调整时间没有意义。  
+
+rightedge               True                    使用时间边界的右边缘设 
+
+                                                置时间。  
+
+                                                 •  - 如果为 False，并且 
+
+                                                压缩到 5 秒，重采样条的 
+
+                                                 时间将在 hh:MM:00 和 
+
+                                                 hh:MM:04 之间。  
+
+  
+﻿  
+
+                                                  •   -如果为 True ，使用 
+
+                                                   的时间边界为 
+
+                                                  hh:MM:05。  
+
+boundoff                 0                        将重采样/重放边界前移一 
+
+                                                  个单位。例如，从 1 分钟 
+
+                                                  重采样到 15 分钟，默认 
+
+                                                  行为是从 00:01:00 到 
+
+                                                  00:15:00 生成一个 15 分 
+
+                                                  钟重放/重采样条。如果  
+
+                                                  boundoff 设置为 1，则 
+
+                                                  边界向前推 1 个单位。在 
+
+                                                  这种情况下，原始单位是 
+
+                                                   1 分钟条。因此，重采样/ 
+
+                                                  重放将使用 00:00:00 到 
+
+                                                  00:14:00 的条生成 15 分 
+
+                                                  钟条。  
+
+重采样测试脚本示例代码：  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+def runstrat():  
+    args = parse_args()  
+    # 创建 cerebro 实体    cerebro = bt.Cerebro(stdstats=False)  
+
+    # 添加策略    cerebro.addstrategy(bt.Strategy)  
+
+    # 加载数据    datapath = args.dataname or  '../../datas/2006- 
+day-001.txt'    data =  
+btfeeds.BacktraderCSVData(dataname=datapath)  
+    # 方便的字典用于时间框架参数转换    tframes = dict(  
+        daily=bt.TimeFrame.Days,  
+        weekly=bt.TimeFrame.Weeks,  
+        monthly=bt.TimeFrame.Months)  
+
+    # 添加重采样数据而不是原始数据    cerebro.resampledata(data,  
+                         timeframe=tframes[args.timeframe],  
+                         compression=args.compression)  
+    # 运行所有内容    cerebro.run()  
+
+  
+﻿  
+
+    # 绘制结果    cerebro.plot(style='bar')  
+def parse_args():  
+    parser = argparse.ArgumentParser(  
+        description='Pandas test script')  
+    parser.add_argument('--dataname', default='', required=False,  
+
+                        help='要加载的文件数据 ')  
+    parser.add_argument('--timeframe', default='weekly',  
+required=False,  
+                        choices=['daily', 'weekly', 'monthly'],  
+                        help='要重采样到的时间框架 ')  
+    parser.add_argument('--compression', default=1,  
+required=False, type=int,  
+                        help='将 n 个条压缩为 1 个 ')  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+DataFeed-数据回放  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:56:51 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+随着时间的推移，单纯对已经完成关闭的 Bar 进行策略测试已不再足够，数据回放应 
+
+运而生。假设，策略在时间框架 X 上操作（例如：每日），数据在更小的时间框架 Y 
+
+ （例如：1 分钟）可用。  
+
+数据回放的作用正如其名，使用 1 分钟数据回放每日条。虽然，这并不能完全再现市 
+
+场发展，但比单独观察每日完成关闭的 Bar 要好得多。如果策略在每日 Bar 形成期间 
+
+实时操作，那么近似 Bar 形成过程模拟策略在实际条件下的表现。  
+
+要实现数据回放，只按常规使用 backtrader 即可。  
+
+•   加载数据源；  
+
+•   使用  replaydata 将数据传递给 cerebro  ；  
+
+•   添加策略；  
+
+注意： 数据回放不支持预加载，因为每个 Bar 实际上是实时构建的，任何 Cerebro  
+
+实例中都会自动禁用预加载。  
+
+可传递给  replaydata  的参数：  
+
+  
+﻿  
+
+参数                     默认值                    描述  
+
+timeframe              bt.TimeFrame.Days      目标时间框架，必须等于 
+
+                                              或大于源时间框架  
+
+compression            1                      将选定值“n”压缩为 1 条  
+
+扩展参数（若无特别需要请勿修改）：  
+
+参数                     默认值                    描述  
+
+bar2edge               True                   使用时间边界作为闭合条 
+
+                                              的目标。例如，使用“ticks  
+
+                                              -> 5 seconds”时，生成的 
+
+                                              5 秒条将对齐到 xx:00 、 
+
+                                              xx:05 、xx:10……  
+
+adjbartime             False                  使用边界的时间调整传递 
+
+                                              的重采样条的时间，而不 
+
+                                              是最后看到的时间戳。  
+
+rightedge              True                   使用时间边界的右边缘设 
+
+                                              置时间。  
+
+举例说明，标准的 2006 年每日数据在每周基础上进行回放。  
+
+•   最终会有 52 个 Bar，即每周一个；  
+
+•   Cerebro 将调用 prenext 和 next 共计 255 次，这是原始数量每日 Bar；  
+
+诀窍在于：  
+
+•   在每周 Bar 形成时，策略的长度（ len(self) ）保持不变。  
+
+•   每过一周，长度增加 1。  
+
+以下是示例，但首先是测试脚本的主要部分，其中加载数据并将其传递给 cerebro 进 
+
+行回放，然后运行。  
+
+Python  
+# 加载数据 datapath = args.dataname or  '../../datas/2006-day- 
+001.txt'data = btfeeds.BacktraderCSVData(dataname=datapath)  
+# 方便的字典用于时间框架参数转换 tframes = dict(  
+    daily=bt.TimeFrame.Days,  
+
+  
+﻿  
+
+    weekly=bt.TimeFrame.Weeks,  
+    monthly=bt.TimeFrame.Months)  
+
+# 首先添加原始数据 - 较小的时间框架 cerebro.replaydata(data,  
+                   timeframe=tframes[args.timeframe],  
+                   compression=args.compression)  
+
+示例 - 每日回放至每周 #  
+
+脚本调用：  
+
+Bash  
+$ ./replay-example.py --timeframe weekly --compression 1  
+
+图表无法显示后台实际发生的情况，因此我们来看一下控制台输出：  
+
+Plaintext  
+prenext len 1 - counter 1  
+prenext len 1 - counter 2  
+prenext len 1 - counter 3  
+prenext len 1 - counter 4  
+prenext len 1 - counter 5  
+prenext len 2 - counter 6  
+...  
+prenext len 9 - counter 44  
+prenext len 9 - counter 45  
+---next len 10 - counter 46  
+---next len 10 - counter 47  
+---next len 10 - counter 48  
+---next len 10 - counter 49  
+---next len 10 - counter 50  
+---next len 11 - counter 51  
+---next len 11 - counter 52  
+---next len 11 - counter 53  
+...  
+---next len 51 - counter 248  
+---next len 51 - counter 249  
+---next len 51 - counter 250  
+---next len 51 - counter 251  
+---next len 51 - counter 252  
+---next len 52 - counter 253  
+---next len 52 - counter 254  
+---next len 52 - counter 255  
+
+我们看到内部的 self.counter 变量跟踪每次调用 prenext 或 next  。前者在应用的 
+
+  
+﻿  
+
+简单移动平均线（SMA）产生值之前调用。后者在 SMA 产生值时调用。  
+
+•   策略的长度（ len(self) ）每 5 条（每周 5 个交易日）变化一次。  
+
+•   策略实际上看到的是每周条在 5 次更新中的发展。  
+
+这并不能完全再现市场的实际逐秒（甚至分钟、小时）的发展，但比实际观察一个条 
+
+要好。  
+
+视觉输出是每周图表，这是系统测试的最终结果。  
+
+示例 2 - 每日到每日带压缩 #  
+
+当然，“回放”也可以应用于相同时间框架，但带有压缩。  
+
+控制台：  
+
+Bash  
+$ ./replay-example.py --timeframe daily --compression 2prenext len  
+1 - counter 1prenext len 1 - counter 2prenext len 2 - counter  
+3prenext len 2 - counter 4prenext len 3 - counter 5prenext len 3 -  
+counter 6prenext len 4 - counter 7...  
+---next len 125 - counter 250---next len 126 - counter 251---next  
+len 126 - counter 252---next len 127 - counter 253---next len 127  
+- counter 254---next len 128 - counter 255  
+
+这次我们得到了预期的一半条数，因为请求了 2 倍压缩。  
+
+结论 #  
+
+可以重建市场发展。通常有可用的更小时间框架数据，可以用于离散地回放系统操作 
+
+的时间框架。  
+
+测试脚本如下：  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+import backtrader.indicators as btind  
+class SMAStrategy(bt.Strategy):  
+    params = (  
+        ('period', 10),  
+        ('onlydaily', False),  
+
+  
+﻿  
+
+    )  
+    def __init__(self):  
+        self.sma = btind.SMA(self.data, period=self.p.period)  
+    def start(self):  
+        self.counter = 0  
+    def prenext(self):  
+        self.counter += 1        print('prenext len %d -  
+counter %d' % (len(self), self.counter))  
+    def next(self):  
+        self.counter += 1        print('---next len %d -  
+counter %d' % (len(self), self.counter))  
+def runstrat():  
+    args = parse_args()  
+
+    # 创建 cerebro 实体    cerebro = bt.Cerebro(stdstats=False)  
+    cerebro.addstrategy(  
+        SMAStrategy,  
+        # 策略参数        period=args.period,  
+    )  
+
+    # 加载数据    datapath = args.dataname or  '../../datas/2006- 
+day-001.txt'    data =  
+btfeeds.BacktraderCSVData(dataname=datapath)  
+    # 方便的字典用于时间框架参数转换    tframes = dict(  
+        daily=bt.TimeFrame.Days,  
+        weekly=bt.TimeFrame.Weeks,  
+        monthly=bt.TimeFrame.Months)  
+    # 首先添加原始数据 - 较小的时间框架    cerebro.replaydata(data,  
+                       timeframe=tframes[args.timeframe],  
+                       compression=args.compression)  
+    # 运行所有内容    cerebro.run()  
+
+    # 绘制结果    cerebro.plot(style='bar')  
+def parse_args():  
+    parser = argparse.ArgumentParser(  
+        description='Pandas test script')  
+    parser.add_argument('--dataname', default='', required=False,  
+
+                        help='要加载的文件数据 ')  
+    parser.add_argument('--timeframe', default='weekly',  
+required=False,  
+                        choices=['daily', 'weekly', 'monthly'],  
+                        help='要重采样到的时间框架 ')  
+    parser.add_argument('--compression', default=1,  
+required=False, type=int,  
+                        help='将 n 个条压缩为 1 个 ')  
+    parser.add_argument('--period', default=10, required=False,  
+
+  
+﻿  
+
+type=int,  
+                        help='应用于指标的周期 ')  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+DataFeed-数据滚动  
+
+  
+
+滚动 #  
+
+并非所有提供商都提供连续期货合约数据。有时提供的数据是仍在交易的到期合约的 
+
+有效数据。这种情况下，进行回测会变得很不方便，因为数据分散在多个不同的合约 
+
+上，并且这些合约还会在时间上重叠。  
+
+如果能够正确地将这些过去的合约数据连接成一个连续的数据流，可以缓解这种痛苦。 
+
+问题在于：  
+
+•   没有一种最佳方法将不同到期日期的数据连接成一个连续的期货数据  
+
+•   有些文献，如 SierraChart 的文章  
+
+滚动数据源 #  
+
+从 backtrader 1.8.10.99 开始，增加了将不同到期日期的期货数据连接成连续期货的功 
+
+能：  
+
+Python  
+import backtrader as bt  
+cerebro = bt.Cerebro()  
+data0 = bt.feeds .MyFeed(dataname='Expiry0')  
+data1 = bt.feeds .MyFeed(dataname='Expiry1')  
+...dataN = bt.feeds .MyFeed(dataname='ExpiryN')  
+drollover = cerebro.rolloverdata(data0, data1, ..., dataN,  
+name='MyRoll', **kwargs)  
+cerebro.run()  
+
+注意：  
+
+•   **kwargs 将在下文解释  
+
+•   也可以直接访问 RollOver 数据源（如果需要子类化，这是很有帮助的）：  
+
+  
+﻿  
+
+Python  
+import backtrader as bt  
+cerebro = bt.Cerebro()  
+data0 = bt.feeds .MyFeed(dataname='Expiry0')  
+data1 = bt.feeds .MyFeed(dataname='Expiry1')  
+...dataN = bt.feeds .MyFeed(dataname='ExpiryN')  
+drollover = bt.feeds .RollOver(data0, data1, ..., dataN,  
+dataname='MyRoll', **kwargs)  
+cerebro.adddata(drollover)  
+cerebro.run()  
+
+注意：  
+
+•   使用 RollOver 时，使用 dataname 参数分配名称，这是所有数据源用于传递名称/ 
+
+代码的标准参数。在这种情况下，它被重用以给整个滚动的期货集分配一个通用名称。  
+
+•   对于 cerebro.rolloverdata  ，使用 name 参数为数据源分配名称，这是该方法 
+
+的一个命名参数。  
+
+Rollover 的使用可概括为：  
+
+1.  按通常方式创建数据源，但 不要 将它们添加到 cerebro  
+
+2.  将这些数据源作为输入传递给 bt.feeds.RollOver  
+
+3.  也传递一个 dataname  ，主要用于识别目的  
+
+4.  然后将这个滚动的数据源添加到 cerebro  
+
+滚动的选项 #  
+
+提供两个参数来控制滚动过程：  
+
+参数名                      默认值                     描述  
+
+checkdate                None                    必须是一个可调用对象， 
+
+                                                 签名： checkdate(dt,  
+
+                                                 d)  
+
+                                                 •   - dt 一个  
+
+                                                 datetime.datetime 对 
+
+                                                 象  
+
+                                                 •   - d  ，当前活跃期货的 
+
+                                                 数据源  
+
+                                                 预期返回值  
+
+  
+﻿  
+
+                                             •   - True  ：只要可调用 
+
+                                             对象返回此值，就可以切 
+
+                                             换到下一个期货  
+
+                                             •   -  False  ：不能进行 
+
+                                             到期转换  
+
+                                             例如，如果某商品在 3 月 
+
+                                              的第三个星期五到期，  
+
+                                             checkdate 可以在到期所 
+
+                                             在的一整周内返回  
+
+                                             True  。  
+
+checkcondition         None                  仅当 checkdate 返回  
+
+                                             True  时才会调用此参 
+
+                                             数。如果为 None  ，则内 
+
+                                             部评估为 True     （执行滚 
+
+                                             动）。否则，它必须是一 
+
+                                             个可调用对象，签名是  
+
+                                             checkcondition(d0,  
+                                             d1)  
+
+                                             •   - d0 是当前活跃期货 
+
+                                              的数据源  
+
+                                             •   - d1 是下一个到期的 
+
+                                             数据源  
+
+                                             预期返回值：  
+
+                                             •   - True  ：滚动到下一 
+
+                                             个期货  
+
+                                             •   -  False  ：不能进行 
+
+                                             到期转换  
+
+                                             例如，可以通过  
+
+                                             checkcondition 判断， 
+
+                                             如果 d0  的交易量小于  
+
+                                             d1  ，则进行到期转换。  
+
+子类化 RollOver #  
+
+如果指定的可调用对象还不够用，可以子类化 RollOver  。需要子类化的方法有：  
+
+  
+﻿  
+
+Python  
+def _checkdate(self, dt, d)  
+
+它与上文同名参数的签名相匹配。预期返回值也相同。  
+
+Python  
+def _checkcondition(self, d0, d1)  
+
+它与上文同名参数的签名相匹配。预期返回值也相同。  
+
+示例用法 #  
+
+注意： 示例中的默认行为是使用 cerebro.rolloverdata  。可以通过传递  -no- 
+
+cerebro 标志来更改。在这种情况下，示例使用 RollOver 和 cerebro.adddata  。  
+
+实现包括一个可在 backtrader 源代码中找到的示例。  
+
+期货拼接  
+
+首先让我们通过运行不带参数的示例来看一个纯粹的拼接示例：  
+
+输出结果如下：  
+
+Plaintext  
+Len, Name, RollName, Datetime, WeekDay, Open, High, Low, Close,  
+Volume, OpenInterest  
+0001, FESX, 199FESXM4, 2013-09-26, Thu, 2829.0, 2843.0, 2829.0,  
+2843.0, 3.0, 1000.0  
+0002, FESX, 199FESXM4, 2013-09-27, Fri, 2842.0, 2842.0, 2832.0,  
+2841.0, 16.0, 1101.0  
+...  
+0176, FESX, 199FESXM4, 2014-06-20, Fri, 3315.0, 3324.0, 3307.0,  
+3322.0, 134777.0, 520978.0  
+0177, FESX, 199FESXU4, 2014-06-23, Mon, 3301.0, 3305.0, 3265.0,  
+3285.0, 730211.0, 3003692.0  
+...  
+0241, FESX, 199FESXU4, 2014-09-19, Fri, 3287.0, 3308.0, 3286.0,  
+3294.0, 144692.0, 566249.0  
+0242, FESX, 199FESXZ4, 2014-09-22, Mon, 3248.0, 3263.0, 3231.0,  
+3240.0, 582077.0, 2976624.0  
+...  
+0306, FESX, 199FESXZ4, 2014-12-19, Fri, 3196.0, 3202.0, 3131.0,  
+3132.0, 226415.0, 677924.0  
+0307, FESX, 199FESXH5, 2014-12-22, Mon, 3151.0, 3177.0, 3139.0,  
+3168.0, 547095.0, 2952769.0  
+
+  
+﻿  
+
+...  
+0366, FESX, 199FESXH5, 2015-03-20, Fri, 3680.0, 3698.0, 3672.0,  
+3695.0, 147632.0, 887205.0  
+0367, FESX, 199FESXM5, 2015-03-23, Mon, 3654.0, 3655.0, 3608.0,  
+3618.0, 802344.0, 3521988.0  
+...  
+0426, FESX, 199FESXM5, 2015-06-18, Thu, 3398.0, 3540.0, 3373.0,  
+3465.0, 1173246.0, 811805.0  
+0427, FESX, 199FESXM5, 2015-06-19, Fri, 3443.0, 3499.0, 3440.0,  
+3488.0, 104096.0, 516792.0  
+
+可以看到，当数据源结束时，下一个数据源接管。  
+
+这总是在一个星期五和下一个星期一之间发生：示例中的期货合约总是在星期五到期。  
+
+期货滚动无检查  
+
+运行带有  --rollover 参数的示例：  
+
+Bash  
+$ ./rollover.py --rollover --plot  
+
+输出结果类似：  
+
+Plaintext  
+Len, Name, RollName, Datetime, WeekDay, Open, High, Low, Close,  
+Volume, OpenInterest  
+0001, FESX, 199FESXM4, 2013-09-26, Thu  
+, 2829.0, 2843.0, 2829.0, 2843.0, 3.0, 1000.0  
+0002, FESX, 199FESXM4, 2013-09-27, Fri, 2842.0, 2842.0, 2832.0,  
+2841.0, 16.0, 1101.0  
+...  
+0176, FESX, 199FESXM4, 2014-06-20, Fri, 3315.0, 3324.0, 3307.0,  
+3322.0, 134777.0, 520978.0  
+0177, FESX, 199FESXU4, 2014-06-23, Mon, 3301.0, 3305.0, 3265.0,  
+3285.0, 730211.0, 3003692.0  
+...  
+0241, FESX, 199FESXU4, 2014-09-19, Fri, 3287.0, 3308.0, 3286.0,  
+3294.0, 144692.0, 566249.0  
+0242, FESX, 199FESXZ4, 2014-09-22, Mon, 3248.0, 3263.0, 3231.0,  
+3240.0, 582077.0, 2976624.0  
+...  
+0306, FESX, 199FESXZ4, 2014-12-19, Fri, 3196.0, 3202.0, 3131.0,  
+3132.0, 226415.0, 677924.0  
+0307, FESX, 199FESXH5, 2014-12-22, Mon, 3151.0, 3177.0, 3139.0,  
+3168.0, 547095.0, 2952769.0  
+
+  
+﻿  
+
+...  
+0366, FESX, 199FESXH5, 2015-03-20, Fri, 3680.0, 3698.0, 3672.0,  
+3695.0, 147632.0, 887205.0  
+0367, FESX, 199FESXM5, 2015-03-23, Mon, 3654.0, 3655.0, 3608.0,  
+3618.0, 802344.0, 3521988.0  
+...  
+0426, FESX, 199FESXM5, 2015-06-18, Thu, 3398.0, 3540.0, 3373.0,  
+3465.0, 1173246.0, 811805.0  
+0427, FESX, 199FESXM5, 2015-06-19, Fri, 3443.0, 3499.0, 3440.0,  
+3488.0, 104096.0, 516792.0  
+
+可以清楚地看到，合约的更换是在 3 月、6 月、9 月和 12 月的第三个星期五。  
+
+这大部分是错误的。虽然 backtrader 无法知道，但作者知道 EuroStoxx 50 期货在到期 
+
+月的第三个星期五中午 12:00 CET 停止交易。因此，即使在到期月的第三个星期五有 
+
+一个每日条，更换也是太晚了。  
+
+在周内更换 #  
+
+在示例中实现了一个 checkdate 可调用对象，它计算当前活跃合约的到期日期。  
+
+checkdate 会在到期周一旦到达时允许进行滚动（如果例如星期一是银行假日，可能 
+
+会是星期二）。  
+
+运行带有  --rollover 和  --checkdate 参数的示例：  
+
+Bash  
+$ ./rollover.py --rollover --checkdate --plot  
+
+输出结果类似：  
+
+Plaintext  
+Len, Name, RollName, Datetime, WeekDay, Open, High, Low, Close,  
+Volume, OpenInterest  
+0001, FESX, 199FESXM4, 2013-09-26, Thu, 2829.0, 2843.0, 2829.0,  
+2843.0, 3.0, 1000.0  
+0002, FESX, 199FESXM4, 2013-09-27, Fri, 2842.0, 2842.0, 2832.0,  
+2841.0, 16.0, 1101.0  
+...  
+0171, FESX, 199FESXM4, 2014-06-13, Fri, 3283.0, 3292.0, 3253.0,  
+3276.0, 734907.0, 2715357.0  
+0172, FESX, 199FESXU4, 2014-06-16, Mon, 3261.0, 3275.0, 3252.0,  
+3262.0, 180608.0, 844486.0  
+...  
+0236, FESX, 199FESXU4, 2014-09-12, Fri, 3245.0, 3247.0, 3220.0,  
+
+  
+﻿  
+
+3232.0, 650314.0, 2726874.0  
+0237, FESX, 199FESXZ4, 2014-09-15, Mon, 3209.0, 3224.0, 3203.0,  
+3221.0, 153448.0, 983793.0  
+...  
+0301, FESX, 199FESXZ4, 2014-12-12, Fri, 3127.0, 3143.0, 3038.0,  
+3042.0, 1409834.0, 2934179.0  
+0302, FESX, 199FESXH5, 2014-12-15, Mon, 3041.0, 3089.0, 2963.0,  
+2980.0, 329896.0, 904053.0  
+...  
+0361, FESX, 199FESXH5, 2015-03-13, Fri, 3657.0, 3680.0, 3627.0,  
+3670.0, 867678.0, 3499116.0  
+0362, FESX, 199FESXM5, 2015-03-16, Mon, 3594.0, 3641.0, 3588.0,  
+3629.0, 250445.0, 1056099.0  
+...  
+0426, FESX, 199FESXM5, 2015-06-18, Thu, 3398.0, 3540.0, 3373.0,  
+3465.0, 1173246.0, 811805.0  
+0427, FESX, 199FESXM5, 2015-06-19, Fri, 3443.0, 3499.0, 3440.0,  
+3488.0, 104096.0, 516792.0  
+
+效果要好得多。滚动现在发生在到期月的第三个星期五之前的星期一。  
+
+添加交易量条件 #  
+
+即使有了改进，还可以进一步改善，通过考虑日期和交易量来决定是否滚动。仅在新 
+
+合约的交易量超过当前活跃合约时进行切换。  
+
+运行带有  --rollover  、  --checkdate 和  --checkcondition 参数的示例：  
+
+Bash  
+$ ./rollover.py --rollover --checkdate --checkcondition --plot  
+
+输出结果类似：  
+
+Plaintext  
+Len, Name, RollName, Datetime, WeekDay, Open, High, Low, Close,  
+Volume, OpenInterest  
+0001, FESX, 199FESXM4, 2013-09-26, Thu, 2829.0, 2843.0, 2829.0,  
+2843.0, 3.0, 1000.0  
+0002, FESX, 199FESXM4, 2013-09-27, Fri, 2842.0, 2842.0, 2832.0,  
+2841.0, 16.0, 1101.0  
+...  
+0175, FESX, 199FESXM4, 2014-06-19, Thu, 3307.0, 3330.0, 3300.0,  
+3321.0, 717979.0, 759122.0  
+0176, FESX, 199FESXU4, 2014-06-20, Fri, 3309.0, 3318.0, 3290  
+
+  
+﻿  
+
+.0, 3298.0, 711627.0, 2957641.0  
+...  
+0240, FESX, 199FESXU4, 2014-09-18, Thu, 3249.0, 3275.0, 3243.0,  
+3270.0, 846600.0, 803202.0  
+0241, FESX, 199FESXZ4, 2014-09-19, Fri, 3273.0, 3293.0, 3250.0,  
+3252.0, 1042294.0, 3021305.0  
+...  
+0305, FESX, 199FESXZ4, 2014-12-18, Thu, 3095.0, 3175.0, 3085.0,  
+3172.0, 1309574.0, 889112.0  
+0306, FESX, 199FESXH5, 2014-12-19, Fri, 3195.0, 3200.0, 3106.0,  
+3147.0, 1329040.0, 2964538.0  
+...  
+0365, FESX, 199FESXH5, 2015-03-19, Thu, 3661.0, 3691.0, 3646.0,  
+3668.0, 1271122.0, 1054639.0  
+0366, FESX, 199FESXM5, 2015-03-20, Fri, 3607.0, 3664.0, 3595.0,  
+3646.0, 1182235.0, 3407004.0  
+...  
+0426, FESX, 199FESXM5, 2015-06-18, Thu, 3398.0, 3540.0, 3373.0,  
+3465.0, 1173246.0, 811805.0  
+0427, FESX, 199FESXM5, 2015-06-19, Fri, 3443.0, 3499.0, 3440.0,  
+3488.0, 104096.0, 516792.0  
+
+效果更好。我们已将切换日期移至到期月第三个星期五之前的星期四。  
+
+结论 #  
+
+backtrader 现在包含一个灵活的机制，用于创建连续期货数据流。  
+
+示例用法 #  
+
+输出：  
+
+Plaintext  
+usage: rollover.py [-h] [--no-cerebro] [--rollover] [--checkdate]  
+                   [--checkcondition] [--plot [kwargs]]  
+Sample for Roll Over of Futures  
+optional arguments:  
+  -h, --help            show this help message and exit  
+  --no-cerebro          Use RollOver Directly (default: False)  
+  --rollover  
+  --checkdate           Change during expiration week (default:  
+False)  
+  --checkcondition      Change when a given condition is met  
+(default: False)  
+
+  
+﻿  
+
+  --plot [kwargs], -p [kwargs]  
+                        Plot the read data applying any kwargs  
+passed For  
+                        example: --plot style="candle" (to plot  
+candles)  
+                        (default: None)  
+
+示例代码：  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import bisect  
+import calendar  
+import datetime  
+import backtrader as bt  
+class TheStrategy(bt.Strategy):  
+    def start(self):  
+        header = ['Len', 'Name', 'RollName', 'Datetime',  
+'WeekDay', 'Open',  
+                   'High', 'Low', 'Close', 'Volume',  
+'OpenInterest']  
+        print(', '.join(header))  
+    def next(self):  
+        txt = list()  
+        txt.append('%04d' % len(self.data0))  
+        txt.append('{}'.format(self .data0._dataname))  
+        # Internal knowledge ... current expiration in use is in  
+_d        txt .append('{}'.format(self .data0._d ._dataname))  
+        txt.append('{}'.format(self .data.datetime.date()))  
+         
+txt.append('{}'.format(self .data.datetime.date().strftime('%a')))  
+        txt.append('{}'.format(self .data.open[0]))  
+        txt.append('{}'.format(self .data.high[0]))  
+        txt.append('{}'.format(self .data.low[0]))  
+        txt.append('{}'.format(self .data.close[0]))  
+        txt.append('{}'.format(self .data.volume[0]))  
+        txt.append('{}'.format(self .data.openinterest[0]))  
+        print(', '.join(txt))  
+def checkdate(dt, d):  
+    # Check if the date is in the week where the 3rd friday of  
+Mar/Jun/Sep/Dec  
+    # EuroStoxx50 expiry codes: MY    # M -> H, M, U, Z (Mar, Jun,  
+
+  
+﻿  
+
+Sep, Dec)    # Y -> 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 -> year code. 5 - 
+> 2015    MONTHS = dict(H=3, M=6, U=9, Z=12)  
+    M = MONTHS[d._dataname[-2]]  
+    centuria, year = divmod(dt.year, 10)  
+    decade = centuria * 10  
+    YCode = int(d._dataname[-1])  
+    Y = decade + YCode  
+    if Y < dt.year:  # Example: year 2019 ... YCode is 0 for 2020         
+Y += 10  
+    exp_day = 21 - (calendar.weekday(Y, M, 1) + 2) % 7    exp_dt =  
+datetime.datetime(Y, M, exp_day)  
+    # Get the year, week numbers    exp_year, exp_week, _ =  
+exp_dt.isocalendar()  
+    dt_year, dt_week, _ = dt.isocalendar()  
+    # print('dt {} vs {} exp_dt'.format(dt, exp_dt))    #  
+print('dt_week {} vs {} exp_week'.format(dt_week, exp_week))  
+    # can switch if in same week    return (dt_year, dt_week) ==  
+(exp_year, exp_week)  
+def checkvolume(d0, d1):  
+    return d0.volume[0] < d1.volume[0]  # Switch if volume from d0  
+< d1  
+def runstrat(args=None):  
+    args = parse_args(args)  
+    cerebro = bt.Cerebro()  
+    fcodes = ['199FESXM4', '199FESXU4', '199FESXZ4', '199FESXH5',  
+'199FESXM5']  
+    store = bt.stores.VChartFile()  
+    ffeeds = [store.getdata(dataname=x) for x in fcodes]  
+    rollkwargs = dict()  
+    if args.checkdate:  
+        rollkwargs['checkdate'] = checkdate  
+        if args.checkcondition:  
+            rollkwargs['checkcondition'] = checkvolume  
+    if not args.no_cerebro:  
+        if args.rollover:  
+            cerebro.rolloverdata(name='FESX', *ffeeds,  
+**rollkwargs)  
+        else:  
+            cerebro.chaindata(name='FESX', *ffeeds)  
+    else:  
+        drollover = bt.feeds .RollOver(*ffeeds, dataname='FESX',  
+**rollkwargs)  
+        cerebro.adddata(drollover)  
+    cerebro.addstrategy(TheStrategy)  
+
+  
+﻿  
+
+    cerebro.run(stdstats=False)  
+    if args.plot:  
+        pkwargs = dict(style='bar')  
+        if args.plot is not True:  # evals to True but is not True             
+npkwargs = eval('dict(' + args.plot +  ')')  # args were passed             
+pkwargs.update(npkwargs)  
+        cerebro.plot(**pkwargs)  
+def parse_args(pargs=None):  
+    parser = argparse.ArgumentParser(  
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,  
+        description='Sample for Roll Over of Futures')  
+    parser.add_argument('--no-cerebro', required=False,  
+action='store_true',  
+                        help='Use RollOver Directly')  
+    parser.add_argument('--rollover', required=False,  
+action='store_true')  
+    parser.add_argument('--checkdate', required=False,  
+action='store_true',  
+                        help='Change during expiration week')  
+    parser.add_argument('--checkcondition', required=False,  
+                        action='store_true',  
+                        help='Change when a given condition is  
+met')  
+    # Plot options    parser.add_argument('--plot', '-p',  
+nargs='?', required=False,  
+                        metavar='kwargs', const=True,  
+                        help=('Plot the read data applying any  
+kwargs passed\n'                               '\n'                               
+'For example:\n'                               '\n'                               
+'  --plot style="candle" (to plot candles)\n'))  
+    if pargs is not None:  
+        return parser.parse_args(pargs)  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+DataFeed-过滤器 Filters  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 20:00:21 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+该功能是较晚加入到  Backtrader  中的，且为了适应已有的内部结构进行了一些调整。 
+
+  
+﻿  
+
+因此，它在灵活性和功能完备性上可能不如预期，但在许多情况下仍然能达到目的。  
+
+尽管实现时尝试支持即插即用的过滤器链，但由于原有内部结构的限制，始终无法保 
+
+证每次都能实现。因此，有些过滤器可以链式使用，而有些则不能。  
+
+目的 #  
+
+将数据源提供的值转换为不同的数据流。  
+
+该实现最初是为了简化两个明显的过滤器的实现，这两个过滤器可以通过 cerebro API 
+
+直接使用，分别是 重采样 和 重放  。  
+
+重采样（cerebro.resampledata）  ：这个过滤器会改变传入数据流的时间框架和压缩 
+
+比例，如：  (秒，1) -> (天，1)  。这意味着原始数据流是以 1 秒为周期的数据条。重 
+
+采样过滤器会拦截数据并进行缓冲，直到能够提供 1 天的条形数据。这发生在看到第 
+
+二天的 1 秒条形数据时。  
+
+重放（cerebro.replaydata）  ，在上面相同的时间框架下，过滤器会利用 1 秒的分辨 
+
+率条形数据重建 1 天的条形数据。也就是说，1 天的条形数据会被反复传递，直到显 
+
+示出所有    1 秒的条形数据，并且数据内容会更新。这种方法模拟了实际交易日的发展。  
+
+注意  ，在日期没有变化的情况下，数据的长度（len(data)）以及策略的长度保持不变。  
+
+工作原理 #  
+
+给定一个已有的数据源，你可以使用 addfilter 方法来添加过滤器：  
+
+Python  
+data = MyDataFeed(dataname=myname)  
+data.addfilter(filter, *args, **kwargs)  
+cerebro.adddata(data)  
+
+即使它与重采样或重放过滤器兼容，你也可以做如下操作：  
+
+Python  
+data = MyDataFeed(dataname=myname)  
+data.addfilter(filter, *args, **kwargs)  
+cerebro.replaydata(data)  
+
+过滤器接口 #  
+
+过滤器必须符合以下接口要求。首先，要是一个可调用的对象，接受如下签名：  
+
+Python  
+
+  
+﻿  
+
+callable(data, *args, **kwargs)  
+
+或一个可以实例化并被调用的类，在实例化时其 __init__ 方法必须支持以下签名：  
+
+Python  
+def __init__(self, data, *args, **kwargs)  
+
+__call__ 方法的签名为：  
+
+Python  
+def __call__(self, data, *args, **kwargs)  
+
+每当新的数据流值到来时，实例都会被调用。 *args 和 **kwargs 与 __init__ 方法 
+
+传递的参数相同。  
+
+返回值                                描述  
+
+True                               表示数据流的内部数据获取循环需要重 
+
+                                   新尝试从数据源中获取数据，因为数据 
+
+                                   流的长度被修改了。  
+
+False                              即使数据可能已经被编辑（例如：修改 
+
+                                   了 close 价格），数据流的长度保持不 
+
+                                   变。  
+
+如果是基于类的过滤器，还可以实现两个额外的方法：  
+
+last  ，其签名为：  
+
+Python  
+def last(self, data, *args, **kwargs)  
+
+当数据流结束时，这个方法会被调用，允许过滤器推送它可能缓冲的数据。例如在重 
+
+采样的情况下，一个条形数据会被缓冲，直到看到下一个时间段的数据。如果数据流 
+
+结束，就没有新的数据可以推动缓冲的数据，  last  方法提供了推送缓冲数据的机会。  
+
+注意  
+
+如果过滤器没有任何参数，且在添加时没有额外的参数，签名可以简化为：  
+
+Python  
+def __init__(self, data) -> def __init__(self, data)  
+
+  
+﻿  
+
+示例过滤器 #  
+
+以下是一个非常简单的过滤器实现：  
+
+Python  
+class SessionFilter(object):  
+    def __init__(self, data):  
+        pass  
+    def __call__(self, data):  
+        if data.p.sessionstart <= data.datetime.time() <=  
+data.p.sessionend:  
+            # 在交易时段内            return False  # 告诉外部数据循 
+
+环，当前条形数据可以继续处理  
+
+        # 在常规交易时段外        data.backwards()  # 从数据堆栈中移 
+
+除该条形数据        return True  # 告诉外部数据循环，必须获取新的条形 
+
+数据  
+
+该过滤器：  
+
+•   使用 data.p.sessionstart 和 data.p.sessionend 判断 Bar 否在交易时段。  
+
+•   如果在交易时段内，返回  False  ，表示没有做任何修改，当前条形数据可以继续 
+
+处理。  
+
+•   如果不在交易时段内，条形数据会被移除，返回 True 表示需要获取新数据。  
+
+注意  ， data.backwards() 使用了  LineBuffer 接口，深入了 backtrader 的内部实 
+
+现。  
+
+使用场景 #  
+
+有些数据源包含了非交易时段的数据，这些数据可能对交易者没有意义。使用此过滤 
+
+器，只有在交易时段内的条形数据才会被考虑。  
+
+数据伪 API for 过滤器  
+
+在上面的示例中，展示了如何通过 data.backwards() 方法从数据流中移除当前条形 
+
+数据。数据源对象中有一些有用的调用，作为过滤器的伪 API ，具体如下：  
+
+•   data.backwards(size=1, force=False)  ：从数据流中移除 size 条数据（默 
+
+认为 1），通过将逻辑指针向后移动。如果 force=True  ，则物理存储也会被移除。  
+
+•   data.forward(value=float('NaN'), size=1)  ：将 size 条数据移到数据流 
+
+的前面，如果需要会增加物理存储，并用 value 填充。  
+
+•   data._addtostack(bar, stash=False)  ：将条形数据 bar 添加到堆栈中，以 
+
+便以后处理。如果 stash=False  ，条形数据将在下一轮迭代时立即被处理；如果  
+
+  
+﻿  
+
+stash=True  ，则会经过完整的处理循环，包括可能被过滤器重新解析。  
+
+•   data._save2stack(erase=False, force=False)  ：将当前条形数据保存到堆 
+
+栈中，以便稍后处理。如果 erase=True  ，则会调用 data.backwards()  ，并接收  
+
+force 参数。  
+
+•   data._updatebar(bar, forward=False, ago=0)  ：使用 bar  中的值覆盖数据 
+
+流中相应位置的数据。如果 ago=0  ，则更新当前条形数据。如果 ago=-1  ，则更新前 
+
+一个条形数据。  
+
+另一个示例：Pinkfish 过滤器 #  
+
+这是一个可以链式使用的过滤器示例，特别是与重放过滤器一起使用。Pinkfish 的名字 
+
+来源于该库的主页面，它的概念是通过使用每日数据来执行仅能通过即时数据完成的 
+
+操作。  
+
+实现方法：  
+
+将每日条形数据分成两个部分：OHL 和 C。  
+
+这些部分与重放一起被串联，在数据流中呈现出以下形式：  
+
+Plaintext  
+With Len X -> OHL  
+With Len X -> OHLC  
+With Len X + 1 -> OHL  
+With Len X + 1 -> OHLC  
+With Len X + 2 -> OHL  
+With Len X + 2 -> OHLC  
+...  
+
+逻辑：  
+
+•   当接收到一个 OHLC 条形数据时，会复制它，并拆解成两个部分：OHL 和 C。  
+
+•   OHL 条形数据的关闭价格被替换为开盘、最高和最低价格的平均值。  
+
+•   C 条形数据即为“tick”，关闭价格会用来填充四个价格字段。  
+
+•   这两个部分被分别处理， OHL 部分会立即加入堆栈， C 部分则被推迟处理。  
+
+该过滤器与以下功能一起工作：  
+
+•   重放过滤器，合并 OHLO 和 CCCC 部分，最终输出 OHLC 条形数据。  
+
+使用场景 #  
+
+例如，当今天最大值是过去 20 个交易日中的最高值时，可发出“关闭”订单，并在第二 
+
+  
+﻿  
+
+次 tick 时执行。  
+
+Python  
+class DaySplitter_Close(bt.with_metaclass(bt.MetaParams, object)):  
+     '''  
+    Splits a daily bar in two parts simulating 2 ticks which will  
+be used to  
+    replay the data:  
+      - First tick: ``OHLX``  
+        The ``Close`` will be replaced by the *average* of  
+``Open``, ``High``  
+        and ``Low``  
+        The session opening time is used for this tick  
+      and  
+      - Second tick: ``CCCC``  
+        The ``Close`` price will be used for the four components  
+of the price  
+        The session closing time is used for this tick  
+    The volume will be split amongst the 2 ticks using the  
+parameters:  
+      - ``closevol`` (default: ``0.5``) The value indicate which  
+percentage, in  
+        absolute terms from 0.0 to 1.0, has to be assigned to the  
+*closing*  
+        tick. The rest will be assigned to the ``OHLX`` tick.  
+    **This filter is meant to be used together with**  
+``cerebro.replaydata``  
+     '''    params = (  
+        ('closevol', 0.5),  # 0 -> 1 amount of volume to keep for  
+close    )  
+    # replaying = True  
+    def __init__(self, data):  
+        self.lastdt = None  
+    def __call__(self, data):  
+        # Make a copy of the new bar and remove it from stream         
+datadt = data.datetime.date()  # keep the date  
+        if self.lastdt == datadt:  
+            return False  # skip bars that come again in the  
+filter  
+        self.lastdt = datadt  # keep ref to last seen bar  
+        # Make a copy of current data for ohlbar        ohlbar =  
+[data.lines[i][0] for i in range(data.size())]  
+        closebar = ohlbar[:]  # Make a copy for the close  
+        # replace close price with o-h-l average        ohlprice =  
+
+  
+﻿  
+
+ohlbar[data.Open] + ohlbar[data.High] + ohlbar[data.Low]  
+        ohlbar[data.Close] = ohlprice / 3.0  
+        vol = ohlbar[data.Volume]  # adjust volume         
+ohlbar[data.Volume] = vohl = int(vol * (1.0 - self.p.closevol))  
+        oi = ohlbar[data.OpenInterest]  # adjust open interst         
+ohlbar[data.OpenInterest] = 0  
+        # Adjust times        dt =  
+datetime.datetime.combine(datadt, data.p.sessionstart)  
+        ohlbar[data.DateTime] = data.date2num(dt)  
+        # Ajust closebar to generate a single tick -> close price         
+closebar[data.Open] = cprice = closebar[data.Close]  
+        closebar[data.High] = cprice  
+        closebar[data.Low] = cprice  
+        closebar[data.Volume] = vol - vohl  
+        ohlbar[data.OpenInterest] = oi  
+        # Adjust times        dt =  
+datetime.datetime.combine(datadt, data.p.sessionend)  
+        closebar[data.DateTime] = data.date2num(dt)  
+        # Update stream        data.backwards(force=True)  #  
+remove the copied bar from stream        data._add2stack(ohlbar)   
+# add ohlbar to stack        # Add 2nd part to stash to delay  
+processing to next round        data._add2stack(closebar,  
+stash=True)  
+        return False  # initial tick can be further processed from  
+stack  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 20:00:48 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+DataFeed-Filters 参考文档 #  
+
+SessionFilter #  
+
+class backtrader.filters.SessionFilter(data)  
+
+此类可作为过滤器应用于数据源，将过滤掉落在常规交易时间之外的日内数据（即盘 
+
+前/盘后数据）。  
+
+•   这是一个“非简单”过滤器，必须管理数据栈（在初始化和调用期间传递）。  
+
+•   它不需要“last”方法，因为没有需要传递的内容。  
+
+  
+﻿  
+
+SessionFilterSimple #  
+
+class backtrader.filters.SessionFilterSimple(data)  
+
+此类可作为过滤器应用于数据源，将过滤掉落在常规交易时间之外的日内数据（即盘 
+
+前/盘后数据）。  
+
+•   这是一个“简单”过滤器，不需要管理数据栈（在初始化和调用期间传递）。  
+
+•   它不需要“last”方法，因为没有需要传递的内容。  
+
+•   Bar 管理将由 SimpleFilterWrapper 类处理，该类在 DataBase.addfilter_simple 调 
+
+用期间添加。  
+
+SessionFiller #  
+
+class backtrader.filters.SessionFiller(data)  
+为声明的会话开始/结束时间内的数据源填充条。  
+
+参数：  
+
+•   fill_price (默认: None): 如果传递了 None，将使用前一个条的收盘价。为了得到 
+
+一个不显示在图表中的条，可以使用 float(‘NaN’) 。  
+
+•   fill_vol (默认: float(‘NaN’)): 用于填充缺失交易量的值。  
+
+•   fill_oi (默认 : float(‘NaN’)): 用于填充缺失未平仓合约的值。  
+
+•   skip_first_fill (默认: True): 在看到第一个有效条时，不从会话开始填充到该条。  
+
+CalendarDays #  
+
+class backtrader.filters.CalendarDays(data)  
+
+填充缺失日历日到交易日。  
+
+参数：  
+
+•   fill_price (默认: None):  
+
+    ￮  0: 用给定值填充。  
+
+    ￮  None: 使用上一个已知收盘价。  
+
+    ￮  -1: 使用上一个条的中点（高低平均值）。  
+
+•   fill_vol (默认: float(‘NaN’)): 用于填充缺失交易量的值。  
+
+•   fill_oi (默认 : float(‘NaN’)): 用于填充缺失未平仓合约的值。  
+
+BarReplayer_Open #  
+
+  
+﻿  
+
+class backtrader.filters.BarReplayer_Open(data)  
+
+此过滤器将一个条分为两部分：  
+
+•   Open: 条的开盘价将用于交付一个初始价格条，其中四个组件（OHLC）相等。  
+
+    ￮  此初始条的交易量/未平仓合约字段为 0。  
+
+•   OHLC: 原始条完整交付，包含原始交易量/未平仓合约。  
+
+分割模拟重播，无需使用重播过滤器。  
+
+DaySplitter_Close #  
+
+class backtrader.filters.DaySplitter_Close(data)  
+
+将一个每日条分为两部分，模拟两个价格点以重播数据：  
+
+•   第一个价格点: OHLX  
+
+    ￮  收盘价将替换为开盘价、高价和低价的平均值。  
+
+    ￮  此价格点使用会话的开盘时间。  
+
+•   第二个价格点: CCCC  
+
+    ￮  收盘价将用于四个价格组件。  
+
+    ￮  此价格点使用会话的收盘时间。  
+
+    ￮  交易量将在两个价格点之间分配，使用参数：  
+
+        ▪  closevol (默认: 0.5): 值表示百分比，绝对值范围为 0.0 到  1.0，分配给 
+
+        收盘价格点的比例。其余部分将分配给 OHLX 价格点。  
+
+此过滤器用于配合 cerebro.replaydata 一起使用。  
+
+HeikinAshi #  
+
+class backtrader.filters.HeikinAshi(data)  
+此过滤器重新建模开盘、高价、低价、收盘价以形成 HeikinAshi 蜡烛图。  
+
+参考：  
+
+•   Heikin Ashi Candlesticks  
+
+•   StockCharts Heikin Ashi  
+
+Renko #  
+
+class backtrader.filters.Renko(data)  
+
+修改数据流以绘制 Renko 条（或砖）。  
+
+  
+﻿  
+
+参数：  
+
+•   hilo (默认: False): 使用高价和低价而不是收盘价来决定是否需要新砖。  
+
+•   size (默认: None): 每个砖块的大小。  
+
+•   autosize (默认: 20.0): 如果 size 为 None，将使用此值自动计算砖块大小（简单 
+
+地将当前价格除以给定值）。  
+
+•   dynamic (默认: False): 如果为 True 并且使用 autosize ，当移动到新砖块时将重 
+
+新计算砖块大小。这当然会消除 Renko 砖块的完美对齐。  
+
+•   align (默认: 1.0): 用于对齐砖块价格边界的因子。例如，如果价格为 3563.25 并 
+
+且 align 为  10.0，则对齐后的价格将为 3560 。计算方法：  
+
+    ￮   3563.25 / 10.0 = 356.325  
+
+    ￮   四舍五入并删除小数位 -> 356  
+
+    ￮   356 * 10.0 -> 3560  
+
+参考 #  
+
+•   StockCharts Renko  
+
+DataFeed-Pandas 数据源示例  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:53:02 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+注意  ，需要安装  pandas 及其依赖项。支持  Pandas Dataframe 对很多人来说很重要， 
+
+他们依赖于 Pandas 提供的不同数据源（包括 CSV）的解析代码及其他功能。  
+
+数据源的重要声明 #  
+
+注意  
+
+这些只是声明。不要盲目复制此代码。请参见下面的实际用法示例：  
+
+Python  
+class PandasData(feed.DataBase):  
+     '''  
+
+    ``dataname`` 参数继承自 ``feed.DataBase`` 是 pandas DataFrame  
+     '''  
+    params = (  
+
+  
+﻿  
+
+        # datetime 的可能值（必须始终存在）        #  None :  
+
+datetime 是 Pandas Dataframe 中的 "index"        #  -1 : 自动检测位 
+
+置或大小写相同的名称        #  >= 0 : pandas dataframe 中列的数值索引         
+
+#  string : pandas dataframe 中的列名（作为索引）         
+('datetime', None),  
+
+        # 下面是可能的值：        #  None : 列不存在        #  -1 :  
+
+自动检测位置或大小写相同的名称        #  >= 0 : pandas dataframe 中列 
+
+的数值索引        #  string : pandas dataframe 中的列名（作为索引）         
+('open', -1),  
+        ('high', -1),  
+        ('low', -1),  
+        ('close', -1),  
+        ('volume', -1),  
+        ('openinterest', -1),  
+    )  
+
+上述 PandasData 类的片段展示了关键点：  
+
+•   在实例化时，类的 dataname 参数包含 Pandas Dataframe  
+
+•   该参数继承自基类 feed.DataBase  
+
+•   新参数具有 DataSeries 中常规字段的名称，并遵循以下约定：  
+
+     ￮  datetime (默认: None)  
+
+         ▪  None: datetime 是 Pandas Dataframe 中的“索引”  
+
+         ▪  -1: 自动检测位置或大小写相同的名称  
+
+         ▪  = 0: pandas dataframe  中列的数值索引  
+
+         ▪  string: pandas dataframe  中的列名（作为索引）  
+
+     ￮  open  、 high  、 low  、 close  、 volume  、 openinterest (默认: -1)  
+
+         ▪  None: 列不存在  
+
+         ▪  -1: 自动检测位置或大小写相同的名称  
+
+         ▪  = 0: pandas dataframe 中列的数值索引  
+
+         ▪  string: pandas dataframe  中的列名（作为索引）  
+
+一个小示例应能够加载经过 Pandas 解析的标准 2006 示例数据，而不是直接由  
+
+backtrader 解析。  
+
+运行示例代码以使用 CSV 数据中的现有“头” ：  
+
+Bash  
+
+  
+﻿  
+
+$ ./panda-test.py  
+--------------------------------------------------  
+               Open     High      Low    Close  Volume   
+OpenInterest  
+Date  
+2006-01-02  3578.73  3605.95  3578.73  3604.33       0              
+02006-01-03  3604.08  3638.42  3601.84  3614.34       0              
+02006-01-04  3615.23  3652.46  3615.23  3652.46       0              
+0  
+
+相同的代码，但告诉脚本跳过头：  
+
+Bash  
+$ ./panda-test.py --noheaders  
+--------------------------------------------------  
+                  1        2        3        4  5  602006-01-02   
+3578.73  3605.95  3578.73  3604.33  0  02006-01-03  3604.08   
+3638.42  3601.84  3614.34  0  02006-01-04  3615.23  3652.46   
+3615.23  3652.46  0  0  
+
+第二次运行时，使用 pandas.read_csv ：  
+
+•    跳过第一行输入（skiprows 参数设置为  1）  
+
+•    不查找头行（header 参数设置为 None）  
+
+backtrader 对 Pandas 的支持尝试自动检测列名是否已被使用，否则使用数值索引， 
+
+并相应地进行操作，尽量提供最佳匹配。  
+
+以下图表展示了成功的结果。Pandas  Dataframe  已正确加载（在两种情况下均如此）。  
+
+  
+
+  
+
+  
+
+示例代码：  
+
+Python  
+from __future__ import (absolute_import, division, print_function,  
+                        unicode_literals)  
+import argparse  
+import backtrader as bt  
+import backtrader.feeds as btfeeds  
+import pandas  
+def runstrat():  
+    args = parse_args()  
+
+  
+﻿  
+
+    # 创建 cerebro 实体    cerebro = bt.Cerebro(stdstats=False)  
+
+    # 添加策略    cerebro.addstrategy(bt.Strategy)  
+
+    # 获取 pandas dataframe    datapath = ('../../datas/2006-day- 
+001.txt')  
+    # 模拟在请求 noheaders 时不存在头行    skiprows = 1 if  
+args.noheaders else 0    header = None if args.noheaders else 0  
+    dataframe = pandas.read_csv(datapath,  
+                                skiprows=skiprows,  
+                                header=header,  
+                                parse_dates=True,  
+                                index_col=0)  
+    if not args.noprint:  
+        print('-------------------------------------------------- 
+')  
+        print(dataframe)  
+        print('-------------------------------------------------- 
+')  
+    # 将其传递给 backtrader 数据源并添加到 cerebro    data =  
+bt.feeds .PandasData(dataname=dataframe)  
+    cerebro.adddata(data)  
+    # 运行所有内容    cerebro.run()  
+
+    # 绘制结果    cerebro.plot(style='bar')  
+def parse_args():  
+    parser = argparse.ArgumentParser(  
+        description='Pandas 测试脚本 ')  
+    parser.add_argument('--noheaders', action='store_true',  
+default=False,  
+                        required=False,  
+                        help='不使用头行 ')  
+    parser.add_argument('--noprint', action='store_true',  
+default=False,  
+                        help='打印 dataframe')  
+    return parser.parse_args()  
+if __name__ ==  '__main__':  
+    runstrat()  
+
+DataFeed-数据源参考  
+
+🔗 原文链接： https://www.poloxue.com/backtrader/...  
+
+⏰ 剪存时间：2025-03- 15 19:53:05 (UTC+8)  
+
+✂️ 本文档由 飞书剪存 一键生成  
+
+  
+﻿  
+
+数据源参考 #  
+
+AbstractDataBase #  
+
+数据行（Lines）:  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数（Params）:  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+  
+
+BacktraderCSVData #  
+
+解析用于测试的自定义 CSV 数据。  
+
+特定参数：  
+
+•    dataname: 要解析的文件名或类文件对象  
+
+数据行：  
+
+  
+﻿  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    headers (True)  
+
+•    separator (,)  
+
+  
+
+CSVDataBase #  
+
+用于实现 CSV 数据源的基类。  
+
+该类负责打开文件、读取行并将其标记化。子类只需重写  _loadline(tokens)  方法。  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+  
+﻿  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•     name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•     headers (True)  
+
+•    separator (,)  
+
+  
+
+Chainer #  
+
+用于链式连接数据的类。  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•     high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+  
+﻿  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+  
+
+DataClone #  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+  
+﻿  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+  
+
+DataFiller #  
+
+该类将使用基础数据源的信息填充数据中的空隙。  
+
+参数：  
+
+•    fill_price (def: None): 如果为 None，将使用上一条数据的收盘价；否则使用 
+
+传递的值（例如 ‘NaN’）  
+
+•    fill_vol (def: NaN): 用于填充缺失数据的交易量  
+
+•    fill_oi (def: NaN): 用于填充缺失数据的未平仓合约量  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+  
+﻿  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    fill_price (None)  
+
+•    fill_vol (nan)  
+
+•    fill_oi (nan)  
+
+  
+
+DataFilter #  
+
+此类过滤给定数据源中的数据行。除了 DataBase 的标准参数外，它还接受  
+
+funcfilter 参数，该参数可以是任何可调用对象。  
+
+逻辑：  
+
+•    funcfilter 将与基础数据源一起调用  
+
+•    它可以是任何可调用对象  
+
+•    返回值 True ：当前数据源的数据行值将被使用  
+
+•    返回值 False ：当前数据源的数据行值将被丢弃  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+  
+﻿  
+
+•   fromdate (None)  
+
+•   todate (None)  
+
+•   sessionstart (None)  
+
+•   sessionend (None)  
+
+•   filters ([])  
+
+•   tz (None)  
+
+•   tzinput (None)  
+
+•   qcheck (0.0)  
+
+•    calendar (None)  
+
+•   funcfilter (None)  
+
+  
+
+GenericCSVData #  
+
+根据定义的参数解析 CSV 文件。  
+
+特定参数（或特定含义）：  
+
+•   dataname: 要解析的文件名或类文件对象  
+
+•    lines 参数（datetime, open, high …）取数值  
+
+•   值为 -1 表示 CSV 源中不存在该字段  
+
+•    如果 time 存在（参数 time >=0），源包含分开的日期和时间字段，将合并  
+
+参数：  
+
+•    nullvalue: 如果缺少值（CSV 字段为空），将使用的值  
+
+•   dtformat: 用于解析 datetime CSV 字段的格式。请参阅 python strptime/strftime  
+
+文档以了解格式。  
+
+•    如果指定了数值，它将按以下方式解释：  
+
+     ￮   1: 值为代表自  1970 年  1 月  1 日以来的秒数的 Unix 时间戳（int 型）  
+
+     ￮   2: 值为代表自  1970 年  1 月  1 日以来的秒数的 Unix 时间戳（float 型）  
+
+•    如果传递了一个可调用对象，它将接受一个字符串并返回一个 datetime.datetime  
+
+实例  
+
+•   tmformat: 用于解析 time CSV 字段的格式（如果存在）（time 字段默认不存在）  
+
+数据行：  
+
+•    close  
+
+  
+﻿  
+
+•     low  
+
+•     high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•     name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•     headers (True)  
+
+•    separator (,)  
+
+•     nullvalue (nan)  
+
+•    dtformat (%Y-%m-%d %H:%M:%S)  
+
+•    tmformat (%H:%M:%S)  
+
+•    datetime (0)  
+
+•    time (-1)  
+
+•    open (1)  
+
+•     high (2)  
+
+•     low (3)  
+
+•    close (4)  
+
+•    volume (5)  
+
+  
+﻿  
+
+•   openinterest (6)  
+
+  
+
+IBData #  
+
+交互式经纪商数据源（Interactive Brokers Data Feed）  
+
+支持参数 dataname  中的合约规格：  
+
+Plaintext  
+
+TICKER # 股票类型和 SMART 交易所  
+
+TICKER-STK # 股票和 SMART 交易所  
+
+TICKER-STK-EXCHANGE # 股票  
+
+TICKER-STK-EXCHANGE-CURRENCY # 股票  
+
+TICKER-CFD # CFD 和 SMART 交易所  
+TICKER-CFD-EXCHANGE # CFD  
+
+TICKER-CDF-EXCHANGE-CURRENCY # 股票  
+
+TICKER-IND-EXCHANGE # 指数  
+
+TICKER-IND-EXCHANGE-CURRENCY # 指数  
+
+TICKER-YYYYMM-EXCHANGE # 期货  
+
+TICKER-YYYYMM-EXCHANGE-CURRENCY # 期货  
+
+TICKER-YYYYMM-EXCHANGE-CURRENCY-MULT # 期货  
+
+TICKER-FUT-EXCHANGE-CURRENCY-YYYYMM-MULT # 期货  
+
+TICKER-YYYYMM-EXCHANGE-CURRENCY-STRIKE-RIGHT # 期权  
+
+TICKER-YYYYMM-EXCHANGE-CURRENCY-STRIKE-RIGHT-MULT # 期权  
+
+TICKER-FOP-EXCHANGE-CURRENCY-YYYYMM-STRIKE-RIGHT # 期权  
+
+TICKER-FOP-EXCHANGE-CURRENCY-YYYYMM-STRIKE-RIGHT-MULT # 期权  
+
+CUR1.CUR2-CASH-IDEALPRO # 外汇  
+
+TICKER-YYYYMMDD-EXCHANGE-CURRENCY-STRIKE-RIGHT # 期权  
+
+TICKER-YYYYMMDD-EXCHANGE-CURRENCY-STRIKE-RIGHT-MULT # 期权  
+
+TICKER-OPT-EXCHANGE-CURRENCY-YYYYMMDD-STRIKE-RIGHT # 期权  
+
+TICKER-OPT-EXCHANGE-CURRENCY-YYYYMMDD-STRIKE-RIGHT-MULT # 期权  
+
+参数：  
+
+•   sectype (默认: STK)  
+
+•   exchange (默认: SMART)  
+
+•   currency (默认: ‘’)  
+
+•    historical (默认: False)  
+
+•   what (默认: None)  
+
+•    rtbar (默认: False)  
+
+  
+﻿  
+
+•    qcheck (默认: 0.5)  
+
+•    backfill_start (默认: True)  
+
+•    backfill (默认: True)  
+
+•      
+
+backfill_from (默认: None)  
+
+•    latethrough (默认: False)  
+
+•    tradename (默认: None)  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.5)  
+
+•    calendar (None)  
+
+•    sectype (STK)  
+
+•    exchange (SMART)  
+
+  
+﻿  
+
+•    currency ()  
+
+•     rtbar (False)  
+
+•     historical (False)  
+
+•    what (None)  
+
+•     useRTH (False)  
+
+•     backfill_start (True)  
+
+•     backfill (True)  
+
+•     backfill_from (None)  
+
+•     latethrough (False)  
+
+•    tradename (None)  
+
+  
+
+InfluxDB #  
+
+数据行：  
+
+•    close  
+
+•     low  
+
+•     high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•     name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+  
+﻿  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    host (127.0.0.1)  
+
+•    port (8086)  
+
+•    username (None)  
+
+•    password (None)  
+
+•    database (None)  
+
+•    startdate (None)  
+
+•    high (high_p)  
+
+•    low (low_p)  
+
+•    open (open_p)  
+
+•    close (close_p)  
+
+•    volume (volume)  
+
+•    ointerest (oi)  
+
+  
+
+MT4CSVData #  
+
+解析 Metatrader4 历史中心导出的 CSV 文件。  
+
+特定参数（或特定含义）：  
+
+•    dataname: 要解析的文件名或类文件对象  
+
+•    使用 GenericCSVData 并简单修改参数  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+  
+﻿  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•     headers (True)  
+
+•    separator (,)  
+
+•     nullvalue (nan)  
+
+•    dtformat (%Y.%m.%d)  
+
+•    tmformat (%H:%M)  
+
+•    datetime (0)  
+
+•    time (1)  
+
+•    open (2)  
+
+•     high (3)  
+
+•     low (4)  
+
+•    close (5)  
+
+•    volume (6)  
+
+•    openinterest (-1)  
+
+  
+
+OandaData #  
+
+参数：  
+
+•    qcheck (默认: 0.5)  
+
+•     historical (默认: False)  
+
+•     backfill_start (默认: True)  
+
+•     backfill (默认: True)  
+
+  
+﻿  
+
+•    backfill_from (默认: None)  
+
+•    bidask (默认: True)  
+
+•    useask (默认: False)  
+
+•    includeFirst (默认: True)  
+
+•    reconnect (默认: True)  
+
+•    reconnections (默认: -1)  
+
+•    reconntimeout (默认: 5.0)  
+
+支持的时间框架和压缩映射符合 OANDA API 开发者指南中的定义：  
+
+Python  
+(TimeFrame.Seconds, 5): 'S5',  
+(TimeFrame.Seconds, 10): 'S10',  
+(TimeFrame.Seconds, 15): 'S15',  
+(TimeFrame.Seconds, 30): 'S30',  
+(TimeFrame.Minutes, 1):  'M1',  
+(TimeFrame.Minutes, 2):  'M3',  
+(TimeFrame.Minutes, 3):  'M3',  
+(TimeFrame.Minutes, 4):  'M4',  
+(TimeFrame.Minutes, 5):  'M5',  
+(TimeFrame.Minutes, 10):  'M10',  
+(TimeFrame.Minutes, 15):  'M15',  
+(TimeFrame.Minutes, 30):  'M30',  
+(TimeFrame.Minutes, 60):  'H1',  
+(TimeFrame.Minutes, 120):  'H2',  
+(TimeFrame.Minutes, 180):  'H3',  
+(TimeFrame.Minutes, 240):  'H4',  
+(TimeFrame.Minutes, 360):  'H6',  
+(TimeFrame.Minutes, 480):  'H8',  
+(TimeFrame.Days, 1): 'D',  
+(TimeFrame.Weeks, 1):  'W',  
+(TimeFrame.Months, 1):  'M',  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+  
+﻿  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.5)  
+
+•    calendar (None)  
+
+•    historical (False)  
+
+•    backfill_start (True)  
+
+•    backfill (True)  
+
+•    backfill_from (None)  
+
+•    bidask (True)  
+
+•    useask (False)  
+
+•    includeFirst (True)  
+
+•    reconnect (True)  
+
+•    reconnections (-1)  
+
+•    reconntimeout (5.0)  
+
+  
+
+PandasData #  
+
+使用 Pandas DataFrame 作为数据源。  
+
+参数：  
+
+•    nocase (默认: True) 列名匹配不区分大小写  
+
+数据行：  
+
+  
+﻿  
+
+•     close  
+
+•     low  
+
+•     high  
+
+•     open  
+
+•     volume  
+
+•     openinterest  
+
+•     datetime  
+
+参数：  
+
+•     dataname (None)  
+
+•     name ()  
+
+•     compression (1)  
+
+•     timeframe (5)  
+
+•    fromdate (None)  
+
+•     todate (None)  
+
+•     sessionstart (None)  
+
+•     sessionend (None)  
+
+•    filters ([])  
+
+•     tz (None)  
+
+•     tzinput (None)  
+
+•     qcheck (0.0)  
+
+•     calendar (None)  
+
+•     nocase (True)  
+
+•     datetime (None)  
+
+•     open (-1)  
+
+•     high (-1)  
+
+•     low (-1)  
+
+•     close (-1)  
+
+•     volume (-1)  
+
+•     openinterest (-1)  
+
+  
+
+PandasDirectData #  
+
+使用 Pandas DataFrame 作为数据源，直接迭代由 itertuples 返回的元组。  
+
+  
+﻿  
+
+数据行：  
+
+•    close  
+
+•     low  
+
+•     high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•     name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    datetime (0)  
+
+•    open (1)  
+
+•     high (2)  
+
+•     low (3)  
+
+•    close (4)  
+
+•    volume (5)  
+
+•    openinterest (6)  
+
+  
+
+Quandl #  
+
+  
+﻿  
+
+直接从 Quandl 服务器下载数据。  
+
+特定参数（或特定含义）：  
+
+•    dataname: 要下载的代码（例如 ‘YHOO’）  
+
+•    baseurl: 服务器 URL  
+
+•    proxies: 指示下载时使用的代理的字典，例如 {‘http’: ‘http://myproxy.com’}  
+
+•    buffered: 如果为 True ，整个 socket 连接将在解析前缓存在本地  
+
+•    reverse: Quandl 返回的值按降序排列（最新的在前）。如果为 True ，请求将告诉  
+
+Quandl 以升序（最旧的在前）格式返回  
+
+•    adjclose: 是否使用股息/拆股调整后的收盘价，并根据它调整所有值  
+
+•    apikey: 如果需要，使用的 API 密钥  
+
+•    dataset: 标识要查询的数据集的字符串。默认为 WIKI  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+  
+﻿  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    headers (True)  
+
+•    separator (,)  
+
+•    reverse (True)  
+
+•    adjclose (True)  
+
+•    round (False)  
+
+•    decimals (2)  
+
+•    baseurl ( https://www.quandl.com/api/v3/datasets )  
+
+•    proxies ({})  
+
+•    buffered (True)  
+
+•    apikey (None)  
+
+•    dataset (WIKI)  
+
+  
+
+QuandlCSV #  
+
+解析预先下载的 Quandl CSV 数据源（或如果符合 Quandl 格式，本地生成的 CSV 文 
+
+件）。  
+
+特定参数：  
+
+•    dataname: 要解析的文件名或类文件对象  
+
+•    reverse (默认: False): 假设本地存储的文件在下载过程中已被反向  
+
+•    adjclose (默认: True): 是否使用股息/拆股调整后的收盘价，并根据它调整所有值  
+
+•    round (默认: False): 是否在调整收盘价后将值四舍五入到特定的小数位数  
+
+•    decimals (默认: 2): 要四舍五入的小数位数  
+
+数据行： #  
+
+close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+  
+﻿  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    headers (True)  
+
+•    separator (,)  
+
+•    reverse (False)  
+
+•    adjclose (True)  
+
+•    round (False)  
+
+•    decimals (2)  
+
+  
+
+RollOver #  
+
+在满足条件时切换到下一个期货合约。  
+
+参数：  
+
+•    checkdate (默认: None): 必须是具有以下签名的可调用对象：  
+
+•    dt: datetime.datetime 对象  
+
+•    d:  当前活动期货的数据源  
+
+返回值：  
+
+•    True: 只要返回 True ，就可以切换到下一个期货  
+
+•    False: 不能进行切换  
+
+•    checkcondition (默认: None): 注意：只有当 checkdate 返回 True 时才会调用此方 
+
+  
+﻿  
+
+法。如果为 None，将在内部评估为 True                         （执行切换）。否则，必须是具有以下签名的 
+
+可调用对象：  
+
+•    d0:  当前活动期货的数据源  
+
+•    d1: 下一个到期的数据源  
+
+返回值：  
+
+•    True: 切换到下一个期货  
+
+•    False: 不能进行切换  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    checkdate (None)  
+
+•    checkcondition (None)  
+
+  
+
+  
+﻿  
+
+SierraChartCSVData #  
+
+解析 SierraChart 导出的 CSV 文件。  
+
+特定参数（或特定含义）：  
+
+•    dataname: 要解析的文件名或类文件对象  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    headers (True)  
+
+•    separator (,)  
+
+•    nullvalue (nan)  
+
+•    dtformat (%Y/%m/%d)  
+
+•    tmformat (%H:%M:%S)  
+
+•    datetime (0)  
+
+  
+﻿  
+
+•   time (-1)  
+
+•    open (1)  
+
+•    high (2)  
+
+•    low (3)  
+
+•    close (4)  
+
+•   volume (5)  
+
+•    openinterest (6)  
+
+  
+
+VCData #  
+
+VisualChart 数据源。  
+
+参数：  
+
+•    qcheck (默认: 0.5): 唤醒的默认超时，以让重新采样器/重放器知道当前条形图可 
+
+以检查是否应交付  
+
+•    historical (默认: False): 如果未提供 todate 参数（在基类中定义），如果设置为  
+
+True ，将强制仅进行历史下载。如果提供了 todate 参数，则效果相同。  
+
+•    milliseconds (默认: True): Visual Chart 构建的条形图具有以下方面： 
+
+HH:MM:59.999000。如果此参数为 True ，将添加一毫秒以使其看起来像：HH:MM +  
+
+1:00.000000  
+
+•   tradename (默认: None): 连续期货不能交易，但非常适合数据跟踪。如果提供此 
+
+参数，它将是当前期货的名称，即交易资产。例如：  
+
+Plaintext  
+001ES -> ES-Mini 连续期货作为 dataname 提供  
+
+ESU16 -> ES-Mini 2016-09。如果在 tradename 中提供，它将是交易资产。  
+
+•    usetimezones (默认: True): 对于大多数市场，Visual Chart 提供的时区信息允许 
+
+将日期时间转换为市场时间（backtrader 选择的表示方法）。某些市场（096）需要特 
+
+殊的内部覆盖和时区支持以显示为用户期望的市场时间。如果设置为 True ，将尝试使 
+
+用 pytz 进行时区转换（默认）。禁用它将删除时区使用（可能有助于减少负载）。  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+  
+﻿  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.5)  
+
+•    calendar (None)  
+
+•    historical (False)  
+
+•    millisecond (True)  
+
+•    tradename (None)  
+
+•    usetimezones (True)  
+
+  
+
+VChartCSVData #  
+
+解析 VisualChart 导出的 CSV 文件。  
+
+特定参数（或特定含义）：  
+
+•    dataname: 要解析的文件名或类文件对象  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+  
+﻿  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    headers (True)  
+
+•    separator (,)  
+
+  
+
+VChartData #  
+
+支持 Visual Chart 二进制磁盘文件的每日和日内格式。  
+
+注：  
+
+•    dataname: 文件名或打开的类文件对象  
+
+如果传递了一个类文件对象，将使用 timeframe 参数来确定实际的时间框架。否则将 
+
+使用文件扩展名（.fd 表示每日，.min 表示日内）。  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+  
+﻿  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+  
+
+VChartFile #  
+
+支持 Visual Chart 二进制磁盘文件的每日和日内格式。  
+
+注：  
+
+•    dataname: Visual Chart 显示的市场代码。例如：015ES 表示 EuroStoxx 50 连续 
+
+期货  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+  
+﻿  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+  
+
+YahooFinanceCSVData #  
+
+解析预先下载的 Yahoo CSV 数据源（或符合 Yahoo 格式的本地生成的 CSV 文件）。  
+
+特定参数：  
+
+•    dataname: 要解析的文件名或类文件对象  
+
+•    reverse (默认: False): 假设本地存储的文件在下载过程中已被反向  
+
+•    adjclose (默认: True): 是否使用股息/拆股调整后的收盘价，并根据它调整所有值  
+
+•    adjvolume (默认: True): 如果 adjclose 也为 True ，则也调整交易量  
+
+•    round (默认: True): 是否在调整收盘价后将值四舍五入到特定的小数位数  
+
+•    roundvolume (默认: 0): 在调整后将交易量四舍五入到给定的小数位数  
+
+•    decimals (默认: 2): 要四舍五入的小数位数  
+
+•    swapcloses (默认: False): [2018-11-16] 看起来关闭和调整后的关闭的顺序现在是 
+
+固定的。保留该参数，以防需要再次交换列的顺序。  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+  
+﻿  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+•    adjclose  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•    headers (True)  
+
+•    separator (,)  
+
+•    reverse (False)  
+
+•    adjclose (True)  
+
+•    adjvolume (True)  
+
+•    round (True)  
+
+•    decimals (2)  
+
+•    roundvolume (False)  
+
+•    swapcloses (False  
+
+)  
+
+  
+
+YahooFinanceData #  
+
+直接从 Yahoo 服务器下载数据。  
+
+  
+﻿  
+
+特定参数（或特定含义）：  
+
+•    dataname: 要下载的代码（例如 ‘YHOO’ 表示 Yahoo  自己的股票报价）  
+
+•    proxies: 指示下载时使用的代理的字典，例如 {‘http’: ‘http://myproxy.com’} 或  
+
+{‘http’: ‘http://127.0.0.1:8080’}  
+
+•    period: 要下载数据的时间框架。传递 ‘w’ 表示每周，’m’ 表示每月。  
+
+•    reverse: [2018-11-16] Yahoo 在线下载的最新版本返回的数据顺序正确。因此， 
+
+在线下载的默认值为 False。  
+
+•    adjclose: 是否使用股息/拆股调整后的收盘价，并根据它调整所有值  
+
+•    urlhist: Yahoo Finance 中的历史报价 URL，用于获取下载的面包授权 cookie  
+
+•    urldown: 实际下载服务器的 URL  
+
+•    retries: 获取面包 cookie 和下载数据的次数  
+
+数据行：  
+
+•    close  
+
+•    low  
+
+•    high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+•    adjclose  
+
+参数：  
+
+•    dataname (None)  
+
+•    name ()  
+
+•    compression (1)  
+
+•    timeframe (5)  
+
+•    fromdate (None)  
+
+•    todate (None)  
+
+•    sessionstart (None)  
+
+•    sessionend (None)  
+
+•    filters ([])  
+
+•    tz (None)  
+
+•    tzinput (None)  
+
+  
+﻿  
+
+•    qcheck (0.0)  
+
+•    calendar (None)  
+
+•     headers (True)  
+
+•    separator (,)  
+
+•     reverse (False)  
+
+•    adjclose (True)  
+
+•    adjvolume (True)  
+
+•     round (True)  
+
+•    decimals (2)  
+
+•     roundvolume (False)  
+
+•    swapcloses (False)  
+
+•     proxies ({})  
+
+•     period (d)  
+
+•     urlhist ( https://finance.yahoo.com/quote /{}/history)  
+
+•     urldown ( https://query1.finance.yahoo.com/v7/finance/download )  
+
+•     retries (3)  
+
+  
+
+YahooLegacyCSV #  
+
+此类旨在加载 Yahoo 在 2017 年 5 月停止提供原始服务之前下载的文件。  
+
+数据行：  
+
+•    close  
+
+•     low  
+
+•     high  
+
+•    open  
+
+•    volume  
+
+•    openinterest  
+
+•    datetime  
+
+•    adjclose  
+
+参数：  
+
+•    dataname (None)  
+
+•     name ()  
+
+  
+﻿  
+
+•     compression (1)  
+
+•     timeframe (5)  
+
+•     fromdate (None)  
+
+•     todate (None)  
+
+•     sessionstart (None)  
+
+•     sessionend (None)  
+
+•     filters ([])  
+
+•     tz (None)  
+
+•     tzinput (None)  
+
+•     qcheck (0.0)  
+
+•     calendar (None)  
+
+•     headers (True)  
+
+•     separator (,)  
+
+•     reverse (False)  
+
+•     adjclose (True)  
+
+•     adjvolume (True)  
+
+•     round (True)  
+
+•     decimals (2)  
+
+•     roundvolume (False)  
+
+•     swapcloses (False)  
+
+•     version ()  
+
+  
+
+  
